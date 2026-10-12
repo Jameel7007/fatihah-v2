@@ -36,6 +36,8 @@ export interface Grade {
   /** beauty-pass supersample factor (1 = native); the chain samples it down bilinearly */
   setSupersample(s: number): void;
   readonly supersample: number;
+  /** v2: scene exposure 0..1 before the tone map — the opening rises out of the dark */
+  setExposure(e: number): void;
   /** v1.8.1 the beauty pass's render target — pipelines must be pre-compiled against it, not the canvas */
   readonly passTarget: RenderTarget;
 }
@@ -49,6 +51,7 @@ export function createGrade(renderer: WebGPURenderer, scene: Scene, camera: Came
 
   const uSeed: N = uniform(0);
   const uAspect: N = uniform(16 / 9);
+  const uExposure: N = uniform(1);
 
   const scenePass: N = pass(scene, camera, new URLSearchParams(location.search).has('nomsaa') ? { samples: 0 } : undefined);
   // Spatial supersampling: the beauty pass renders at ss× the canvas resolution and the
@@ -64,7 +67,7 @@ export function createGrade(renderer: WebGPURenderer, scene: Scene, camera: Came
     scenePass.setResolutionScale(v);
   };
   if (SS > 1) setSupersample(SS);
-  let c: N = (toneMapping as N)(AgXToneMapping, 1, scenePass.rgb);
+  let c: N = (toneMapping as N)(AgXToneMapping, 1, scenePass.rgb.mul(uExposure));
 
   // saturation 1.05 (§1: compensate AgX mid desaturation) — TSL's saturation node; the
   // hand-rolled luma-mix zeroed dark pixels through the tone-mapping node graph
@@ -118,6 +121,9 @@ export function createGrade(renderer: WebGPURenderer, scene: Scene, camera: Came
       uAspect.value = a;
     },
     setSupersample,
+    setExposure: (e: number) => {
+      uExposure.value = e;
+    },
     get supersample() {
       return ssNow;
     },

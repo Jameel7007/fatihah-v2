@@ -1,0 +1,147 @@
+{
+ "base": "http://localhost:4810",
+ "viewport": "390x660@3",
+ "results": {
+  "steady": {
+   "introLifted_s": 0.31,
+   "frames": 1371,
+   "harnessStalls": 7,
+   "dt_ms": {
+    "p50": 16.7,
+    "p95": 16.7,
+    "p99": 16.8,
+    "max": 16.8,
+    "over25": 0,
+    "over50": 0
+   },
+   "playhead": {
+    "jumps": 0,
+    "worstStepVsAllowed": 0.277,
+    "overGateLimit": 0,
+    "chapterSequence": "0→1→2",
+    "skipped": false
+   },
+   "pipelines": {
+    "compiledBeforeIntroLifted": 12,
+    "syncOnVisibleFrames": 0,
+    "syncList": []
+   },
+   "waitNote": [],
+   "resizes": 1,
+   "assets": {
+    "world": {
+     "step": "ready",
+     "ms": {
+      "download": 1.0999999940395355,
+      "build": 111.30000000447035,
+      "compile": 163.89999999850988
+     },
+     "readyAt": 0.28
+    },
+    "ink": {
+     "step": "ready",
+     "ms": {
+      "download": 143.19999999552965,
+      "build": 0
+     },
+     "readyAt": 0.28
+    }
+   }
+  },
+  "flick": {
+   "introLifted_s": 0.22,
+   "frames": 1315,
+   "harnessStalls": 4,
+   "dt_ms": {
+    "p50": 16.7,
+    "p95": 16.7,
+    "p99": 16.8,
+    "max": 16.8,
+    "over25": 0,
+    "over50": 0
+   },
+   "playhead": {
+    "jumps": 0,
+    "worstStepVsAllowed": 0.712,
+    "overGateLimit": 0,
+    "chapterSequence": "0→1→2→1",
+    "skipped": false
+   },
+   "pipelines": {
+    "compiledBeforeIntroLifted": 12,
+    "syncOnVisibleFrames": 0,
+    "syncList": []
+   },
+   "waitNote": [],
+   "resizes": 1,
+   "assets": {
+    "world": {
+     "step": "ready",
+     "ms": {
+      "download": 0.7000000029802322,
+      "build": 87,
+      "compile": 118.19999999552965
+     },
+     "readyAt": 0.21
+    },
+    "ink": {
+     "step": "ready",
+     "ms": {
+      "download": 166.5,
+      "build": 0
+     },
+     "readyAt": 0.21
+    }
+   }
+  },
+  "gate": {
+   "introLifted_s": 0.25,
+   "frames": 1334,
+   "harnessStalls": 2,
+   "dt_ms": {
+    "p50": 16.7,
+    "p95": 16.7,
+    "p99": 16.8,
+    "max": 16.8,
+    "over25": 0,
+    "over50": 0
+   },
+   "playhead": {
+    "jumps": 0,
+    "worstStepVsAllowed": 0.249,
+    "overGateLimit": 0,
+    "chapterSequence": "0→1→2",
+    "skipped": false
+   },
+   "pipelines": {
+    "compiledBeforeIntroLifted": 12,
+    "syncOnVisibleFrames": 0,
+    "syncList": []
+   },
+   "waitNote": [
+    "wait shown",
+    "wait hidden"
+   ],
+   "resizes": 1,
+   "assets": {
+    "world": {
+     "step": "ready",
+     "ms": {
+      "download": 0.6000000014901161,
+      "build": 89,
+      "compile": 142.60000000149012
+     },
+     "readyAt": 0.23
+    },
+    "ink": {
+     "step": "ready",
+     "ms": {
+      "download": 15173,
+      "build": 0
+     },
+     "readyAt": 15.17
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,129 @@
+<title>Fātiḥah v2 Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,560&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400&family=Amiri+Quran&display=swap">
+<style>
+/* Layout: one reading column; a milestone rail up top, then spec and ledger sections in build order. */
+:root {
+  --bg: #F6F2E9; --ink: #1E1A14; --muted: #6B6252; --rule: #DDD3C0; --gold: #8F6A22; --panel: #EFE8DA;
+  --ok: #2F6B3A; --wait: #8A5A12;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --arabic: "Amiri Quran", "Amiri", "Geeza Pro", serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #04060F; --ink: #E7DDC6; --muted: #A2957A; --rule: #24283A; --gold: #C9A45B; --panel: #0B0F1F; --ok: #7FBF8A; --wait: #D9A653; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #04060F; --ink: #E7DDC6; --muted: #A2957A; --rule: #24283A; --gold: #C9A45B; --panel: #0B0F1F; --ok: #7FBF8A; --wait: #D9A653; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 15.5px/1.6 var(--body); }
+.wrap { max-width: 760px; margin: 0 auto; padding-inline: 18px; padding-block: 36px 64px; }
+h1, h2 { font-family: var(--display); font-weight: 560; text-wrap: balance; line-height: 1.2; }
+h1 { font-size: clamp(30px, 6vw, 42px); margin: 0; }
+h1 .ar { font-family: var(--arabic); font-weight: 400; color: var(--gold); margin-inline-start: .3em; }
+h2 { font-size: 22px; margin: 44px 0 10px; }
+.lede { color: var(--muted); max-width: 62ch; margin: 10px 0 0; }
+.eyebrow { font: 11px/1.4 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px; }
+p, li { max-width: 65ch; }
+.rail { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 26px; }
+.rail div { border-top: 3px solid var(--rule); padding-top: 6px; font: 12px/1.35 var(--body); color: var(--muted); min-width: 0; }
+.rail b { display: block; font: 12px var(--mono); color: var(--ink); }
+.rail .now { border-color: var(--gold); color: var(--ink); }
+@media (max-width: 560px) { .rail { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+figure { margin: 18px 0 0; }
+figure img { width: 100%; border-radius: 4px; display: block; background: #01030D; }
+figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.tbl { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ok { color: var(--ok); font-weight: 500; }
+.wait { color: var(--wait); font-weight: 500; }
+code { font: 13px var(--mono); background: var(--panel); padding: 1px 5px; border-radius: 3px; }
+.steps { background: var(--panel); border-radius: 6px; padding: 14px 18px; }
+.steps ol { margin: 6px 0 0; padding-left: 20px; }
+.log li { margin-bottom: 6px; }
+.log time { font: 12px var(--mono); color: var(--muted); margin-inline-end: 6px; }
+a { color: var(--gold); }
+a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+<p class="eyebrow">Status ledger · updated 12 October 2026</p>
+<h1>Al-Fātiḥah v2<span class="ar" lang="ar">ٱلْفَاتِحَة</span></h1>
+<p class="lede">The rebuild of the manuscript with more motion: a pen you can see, a camera that travels, a pause between the āyāt, and particles and light. Built phone first. Version 1 stays live until this one replaces it.</p>
+
+<div class="rail" aria-label="Milestones">
+  <div class="now"><b>R0</b>Foundations · awaiting your phone check</div>
+  <div><b>R1</b>The opening</div>
+  <div><b>R2</b>The writing</div>
+  <div><b>R3</b>Between the āyāt</div>
+  <div><b>R4</b>The rise</div>
+  <div><b>R5</b>The ending</div>
+  <div><b>R6</b>Polish and launch</div>
+</div>
+
+<h2>R0: what is built</h2>
+<p>The dark world (v1's universe sky) and the parchment (v1's surface and material) on a phone, driven by the new engine. Three placeholder chapters exercise the rules: the opening rises out of the dark, scrolling unrolls the page, and the page settles flat. R1 to R4 replace them with designed shots.</p>
+<figure>
+  <img src="r0-strip.jpg" alt="Five phone frames: the rolled parchment in the dark, unrolling, unrolled, the reading view, and the waiting note">
+  <figcaption>Phone frames from the scripted session at 390 × 660: end of the opening, half unrolled, unrolled, the reading view, and the page waiting for its ink with the note shown.</figcaption>
+</figure>
+
+<h2>The rules, and how they are kept</h2>
+<div class="tbl"><table>
+<thead><tr><th>Rule</th><th>How v2 does it</th></tr></thead>
+<tbody>
+<tr><td>Scroll picks the scene; time plays it</td><td>Scrolling asks for a chapter. The animation plays at its own pace. A fast flick plays up to 2.5× faster and never skips. Going back rewinds at 1.6×.</td></tr>
+<tr><td>Nothing appears before it is ready</td><td>Each chapter lists what it needs. Everything downloads from the first moment; each chapter's pieces are built and their shader programs prepared before it may start. If you arrive early, the page waits and says “The page is being prepared”.</td></tr>
+<tr><td>One quality setting per device</td><td>Phone, laptop or desktop is chosen once when the page opens. It never changes while you watch. On phones the picture size ignores the browser bars sliding in and out.</td></tr>
+<tr><td>Measured from day one</td><td><code>?hud=1</code> shows the frame rate. <code>?trace=1</code> records every frame. A scripted phone session plays the piece and checks every frame.</td></tr>
+<tr><td>The text never changes</td><td>v1's text, ink and gold pipeline is carried over unchanged. Rebuilt here, it produces every file byte for byte, and every build checks the seven āyāt letter for letter.</td></tr>
+</tbody></table></div>
+
+<h2>Measured in R0</h2>
+<p>Headless Brave on this Mac, cold load of the production build, real scroll gestures. The GPU is the Mac's, so these numbers show that nothing stutters or jumps by design. They do not show phone speed. Your phone is the real test.</p>
+<div class="tbl"><table>
+<thead><tr><th>Check</th><th>Phone 390×660 (WebGPU)</th><th>Desktop 1440×900</th><th>Phone (WebGL2)</th></tr></thead>
+<tbody>
+<tr><td>Frame interval, typical / worst</td><td class="n">16.7 / 16.8 ms</td><td class="n">16.7 / 16.8 ms</td><td class="n">16.7 / 16.8 ms</td></tr>
+<tr><td>Playhead jumps (steady, flick, gate runs)</td><td class="n ok">0</td><td class="n ok">0</td><td class="n ok">0</td></tr>
+<tr><td>Chapters skipped during a flick</td><td class="ok">none</td><td class="ok">none</td><td class="ok">none</td></tr>
+<tr><td>Shaders compiled on a visible frame</td><td class="n ok">0</td><td class="n ok">0</td><td class="n ok">0</td></tr>
+<tr><td>Ink held back 15 s: page waits, note shows, continues smoothly</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">yes</td></tr>
+<tr><td>Intro gone after</td><td class="n">0.3 s</td><td class="n">0.3 s</td><td class="n">0.4–1.5 s</td></tr>
+</tbody></table></div>
+<p>Frames that stalled while the harness itself was taking a screenshot are listed separately in the report. They are not counted above.</p>
+
+<h2>Not yet measured</h2>
+<ul>
+<li class="wait">Frame rate on a real phone (iPhone Safari). This is your R0 check.</li>
+<li>Load time on a mobile connection.</li>
+<li>Reduced motion and the fallback for browsers without WebGPU or WebGL2. Both are in R6.</li>
+</ul>
+
+<div class="steps">
+<p class="eyebrow">Your R0 check on the phone</p>
+<ol>
+<li>Open the link on your phone with <code>?hud=1</code> added to the address. The frame rate shows at the top left.</li>
+<li>Watch the opening rise out of the dark, then scroll slowly through the unroll.</li>
+<li>Flick hard to the bottom, then back to the top. It should glide, never jump.</li>
+<li>Tell me the fps you saw, and anything that felt stuck, jumpy or slow to load.</li>
+</ol>
+</div>
+
+<h2>Decisions</h2>
+<ul class="log">
+<li><time>2026-10-12</time>Profiles: phone at up to 1.75 device pixels per point, 1024 shadow map with a simple soft filter, no page inertia, particles at 35%. Laptop and desktop get v1's softer shadows.</li>
+<li><time>2026-10-12</time>Pace limits: a flick plays up to 2.5× the authored speed, and going back plays at 1.6×.</li>
+<li><time>2026-10-12</time>On a phone the reading view fills the screen with the text block. A wide screen keeps more of the page around it.</li>
+<li><time>2026-10-12</time>The opening waits until the intro has fully faded, then the light comes up.</li>
+</ul>
+
+<h2>Ledger</h2>
+<ul class="log">
+<li><time>2026-10-12</time>R0 built: new project, v1 pipeline carried over and verified, profile, timeline, asset gate, the world and parchment, intro, waiting note, trace, HUD and the scripted phone session. Waiting for your phone check before R1.</li>
+</ul>
+<p style="margin-top:36px;color:var(--muted);font-size:13px">Made by Thomas Mooney (@Jameel7007).</p>
+</div>

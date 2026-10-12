@@ -1,0 +1,25 @@
+{
+  "name": "fatihah-v2",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 4530 --strictPort",
+    "build": "node build/verify-text.mjs && tsc --noEmit && vite build",
+    "preview": "vite preview --port 4531 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test qa/*.test.ts",
+    "text:verify": "node build/verify-text.mjs",
+    "text:rebuild": "node build/shape-text.mjs && node build/build-ink-atlas.mjs && node build/build-glyph-mesh.mjs && node build/build-glyph-mesh.mjs --tier=3",
+    "phone": "node qa/phone-session.mjs"
+  },
+  "dependencies": {
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.185.4",
+    "harfbuzzjs": "1.6.0",
+    "typescript": "7.0.2",
+    "vite": "8.2.2"
+  }
+}

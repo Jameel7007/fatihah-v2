@@ -11,9 +11,11 @@
 //     the playhead plays it at its authored pace (1 / duration per second);
 //   · a scrubbable chapter requests the reader's position inside it, and the playhead follows
 //     with a soft spring, never faster than the chapter's speed cap.
-// A reader far ahead (a fast flick) makes the playhead run faster, up to MAX_BOOST × the
-// authored pace — it never skips. A reader who goes back sees the chapters rewind at
-// REVERSE_RATE × their pace. The playhead never enters a chapter whose assets are not ready
+// The chapter the reader is IN plays at its authored pace. Chapters the reader has scrolled past
+// (forward or back) are fast-forwarded at up to MAX_BOOST ×, braking at a constant CATCH_A so it
+// arrives in the reader's chapter at 1× — the picture never skips, but it never trails the reader
+// for long either (the whole piece, ≈ 95 s, clears in ≈ 6.5 s; the rest of one āyah in under a second)
+// (owner, R2 phone review: "I scroll down and the image takes too long to catch up"). The playhead never enters a chapter whose assets are not ready
 // (`limit`, set from the AssetGate); it waits at the end of the previous one instead.
 //
 // No imports: this file is unit-tested directly by node (qa/timeline.test.ts).
@@ -28,8 +30,11 @@ export interface ChapterSpec {
   scrub: boolean;
 }
 
-export const MAX_BOOST = 2.5;
-export const REVERSE_RATE = 1.6;
+export const MAX_BOOST = 16;
+/** the fast-forward's braking (rate units per second): rate = √(2 · CATCH_A · authored seconds behind) */
+export const CATCH_A = 10;
+/** a scrubbed chapter follows the reader's thumb at up to this rate */
+const SCRUB_CAP = 3;
 /** time to reach full speed from rest, and to come to rest (seconds) */
 const RAMP_S = 0.3;
 /** scrub follow time constant (seconds) */
@@ -46,6 +51,8 @@ export class Timeline {
   rate = 0;
   /** last requested position (before the asset limit) */
   request = 0;
+  /** the chapter the reader's scroll position is in (set by requestFromScroll / pin) */
+  reader = 0;
   /** highest s the playhead may reach: the start of the first chapter that is not ready */
   limit: number;
 
@@ -86,6 +93,7 @@ export class Timeline {
       }
     }
     const spec = this.specs[k]!;
+    this.reader = k;
     if (!spec.scrub) return k + 1;
     const local = (pos - (this.starts[k] ?? 0)) / spec.scroll;
     return k + Math.max(0, Math.min(1, local));
@@ -94,6 +102,17 @@ export class Timeline {
   /** Scroll offset (viewport heights) where chapter k begins — for "jump to" controls and QA. */
   scrollStartOf(k: number): number {
     return this.starts[Math.max(0, Math.min(this.count - 1, k))] ?? 0;
+  }
+
+  /** Authored seconds between playhead positions a < b. */
+  private seconds(a: number, b: number): number {
+    let sum = 0;
+    for (let k = Math.max(0, Math.floor(a)); k < Math.min(this.count, Math.ceil(b)); k++) {
+      const lo = Math.max(a, k);
+      const hi = Math.min(b, k + 1);
+      if (hi > lo) sum += (hi - lo) * this.specs[k]!.duration;
+    }
+    return sum;
   }
 
   /** Advance the playhead toward `request` by dt seconds. Returns true when it moved. */
@@ -110,15 +129,18 @@ export class Timeline {
 
     // The playback RATE (1 = the authored pace) is the continuous quantity: crossing into a
     // chapter with a different duration changes how fast s moves, never how fast the picture does.
-    // A reader whole chapters ahead raises the rate, up to MAX_BOOST.
+    // How much authored time lies between the playhead and the reader's own chapter?
+    const reader = Math.min(this.count - 1, Math.max(0, this.reader));
+    const behind = dir > 0 ? this.seconds(this.s, Math.min(target, reader)) : dir < 0 ? this.seconds(Math.max(target, reader + 1), this.s) : 0;
+    // passed-over chapters fast-forward and brake into the reader's chapter; that one plays at 1×
+    const cap = Math.max(1, Math.min(MAX_BOOST, Math.sqrt(2 * CATCH_A * behind)));
     const ahead = Math.abs(dist);
-    const boost = Math.max(1, Math.min(MAX_BOOST, ahead));
-    const cap = boost * (dir < 0 ? REVERSE_RATE : 1);
-    let desired = spec.scrub && ahead < 1 ? dist / SCRUB_TAU / pace : dir * cap;
+    let desired = spec.scrub && k === reader ? dist / SCRUB_TAU / pace : dir * cap;
+    const lim0 = spec.scrub && k === reader ? Math.max(cap, SCRUB_CAP) : cap;
     // come to rest over RAMP_S rather than stopping dead (the authored tweens also ease at t = 1)
-    const accel = Math.max(1, cap) / RAMP_S;
+    const accel = Math.max(1, lim0, Math.abs(this.rate)) / RAMP_S;
     const stopping = Math.sqrt((2 * accel * ahead) / pace);
-    const lim = Math.min(cap, stopping);
+    const lim = Math.min(lim0, stopping);
     desired = Math.max(-lim, Math.min(lim, desired));
     this.rate += Math.max(-accel * dt, Math.min(accel * dt, desired - this.rate));
 
@@ -136,6 +158,7 @@ export class Timeline {
   /** Pin the playhead (QA frames, reduced motion). */
   pin(s: number): void {
     this.s = Math.max(0, Math.min(this.count, s));
+    this.reader = Math.min(this.count - 1, Math.floor(this.s));
     this.rate = 0;
   }
 }

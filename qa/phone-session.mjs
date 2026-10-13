@@ -79,8 +79,8 @@ async function session(name, extra, script) {
 }
 
 // --- the checks ----------------------------------------------------------------------------
-const MAX_BOOST = 2.5;
-const REVERSE_RATE = 1.6;
+const MAX_BOOST = 16; // src/core/timeline.ts
+const REVERSE_RATE = 1;
 function analyse(run) {
   if (!run) return undefined;
   const { trace, app } = run;
@@ -130,6 +130,18 @@ function analyse(run) {
     harnessStalls,
     dt_ms: { p50: q(0.5), p95: q(0.95), p99: q(0.99), max: dts[dts.length - 1] ?? 0, over25: dts.filter((d) => d > 25).length, over50: dts.filter((d) => d > 50).length },
     playhead: { jumps, worstStepVsAllowed: +worstStep.toFixed(3), overGateLimit: overLimit, chapterSequence: seq.join('→'), skipped },
+    // the owner's R2 complaint, measured: the longest stretch the picture spends catching up to the
+    // chapter the reader's thumb is in (fast-forwarding through chapters scrolled past)
+    catchUp_s: (() => {
+      let worst = 0;
+      let since = -1;
+      for (const f of fr) {
+        const behindFwd = f.s < Math.min(f.rd, f.lim) - 1e-3;
+        const behindBack = f.s > f.rd + 1 + 1e-3;
+        if (behindFwd || behindBack) { if (since < 0) since = f.at; worst = Math.max(worst, (f.at - since) / 1000); } else since = -1;
+      }
+      return +worst.toFixed(2);
+    })(),
     pipelines: { compiledBeforeIntroLifted: syncBefore, syncOnVisibleFrames: syncAfter.length, syncList: syncAfter.slice(0, 20) },
     // the frame loop can keep its cadence while the GPU falls behind: the lag (time for the GPU to
     // finish what was submitted, sampled every 0.5 s) shows it

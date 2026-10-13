@@ -264,7 +264,7 @@ renderer.setAnimationLoop((now: number) => {
       });
     }
   }
-  trace.frame({ at: +now.toFixed(1), dt: +(dt * 1000).toFixed(2), cpu: +(performance.now() - cpuStart).toFixed(2), s: +timeline.s.toFixed(5), ch: timeline.chapter, req: +request.toFixed(4), lim: timeline.limit, rate: +timeline.rate.toFixed(3) });
+  trace.frame({ at: +now.toFixed(1), dt: +(dt * 1000).toFixed(2), cpu: +(performance.now() - cpuStart).toFixed(2), s: +timeline.s.toFixed(5), ch: timeline.chapter, req: +request.toFixed(4), lim: timeline.limit, rate: +timeline.rate.toFixed(3), rd: timeline.reader });
   hud.update(dt, `${profile.name} · ${backend} · dpr ${dpr} · ${CHAPTERS[timeline.chapter]!.id} ${timeline.t.toFixed(2)} → ${request.toFixed(2)}${timeline.limit < CHAPTERS.length ? ` · gate ${timeline.limit}` : ''}`);
 });
 

@@ -18,6 +18,8 @@ jameel7007.github.io/fatihah-manuscript) stays untouched until v2 replaces it at
 ## How it is built
 - Scroll picks the chapter; time plays it: `src/core/timeline.ts` (playhead s, chapter = ⌊s⌋, t = s − ⌊s⌋).
   Every visual is a pure function of s. Neighbouring chapters must agree at their shared boundary.
+  The reader's own chapter (`timeline.reader`) plays at 1×; chapters scrolled past fast-forward at up to 16×,
+  braking (√(2·CATCH_A·seconds behind)) into it — owner, R2: "the image takes too long to catch up".
 - `src/core/assetGate.ts`: each chapter lists its assets (`CHAPTER_ASSETS`); download → build → pre-compile
   (against `grade.passTarget`, never the canvas) before the playhead may enter.
 - `src/core/profile.ts`: phone / laptop / desktop, chosen once at boot, never changed mid-session.

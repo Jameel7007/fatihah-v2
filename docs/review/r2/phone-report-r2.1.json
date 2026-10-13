@@ -1,0 +1,178 @@
+{
+ "base": "http://localhost:4896",
+ "viewport": "390x660@3",
+ "results": {
+  "steady": {
+   "introLifted_s": 0.26,
+   "frames": 2641,
+   "harnessStalls": 10,
+   "dt_ms": {
+    "p50": 16.7,
+    "p95": 16.7,
+    "p99": 16.8,
+    "max": 16.8,
+    "over25": 0,
+    "over50": 0
+   },
+   "playhead": {
+    "jumps": 0,
+    "worstStepVsAllowed": 0.125,
+    "overGateLimit": 0,
+    "chapterSequence": "0→1→2→3→4→5",
+    "skipped": false
+   },
+   "catchUp_s": 0.08,
+   "pipelines": {
+    "compiledBeforeIntroLifted": 13,
+    "syncOnVisibleFrames": 1,
+    "syncList": [
+     "pipe:SYNC:Render Pipeline/RenderPipeline"
+    ]
+   },
+   "gpuLag_ms": {
+    "n": 93,
+    "p50": 7.8,
+    "p95": 12.5,
+    "max": 63.1
+   },
+   "waitNote": [],
+   "resizes": 1,
+   "assets": {
+    "world": {
+     "step": "ready",
+     "ms": {
+      "download": 0.7999999970197678,
+      "build": 88.10000000149012,
+      "compile": 118.80000000447035
+     },
+     "readyAt": 0.21
+    },
+    "ink": {
+     "step": "ready",
+     "ms": {
+      "download": 146.89999999850988,
+      "build": 35.79999999701977,
+      "compile": 71.29999999701977
+     },
+     "readyAt": 0.32
+    }
+   }
+  },
+  "flick": {
+   "introLifted_s": 0.21,
+   "frames": 4249,
+   "harnessStalls": 3,
+   "dt_ms": {
+    "p50": 16.7,
+    "p95": 16.7,
+    "p99": 16.8,
+    "max": 16.8,
+    "over25": 0,
+    "over50": 0
+   },
+   "playhead": {
+    "jumps": 0,
+    "worstStepVsAllowed": 0.999,
+    "overGateLimit": 0,
+    "chapterSequence": "0→1→2→3→4→5→6→7→8→9→10→9→8→7→6→5→4→3→2→1",
+    "skipped": false
+   },
+   "catchUp_s": 5.55,
+   "pipelines": {
+    "compiledBeforeIntroLifted": 13,
+    "syncOnVisibleFrames": 1,
+    "syncList": [
+     "pipe:SYNC:Render Pipeline/RenderPipeline"
+    ]
+   },
+   "gpuLag_ms": {
+    "n": 141,
+    "p50": 3.6,
+    "p95": 11.2,
+    "max": 51
+   },
+   "waitNote": [],
+   "resizes": 1,
+   "assets": {
+    "world": {
+     "step": "ready",
+     "ms": {
+      "download": 0.7000000029802322,
+      "build": 76.29999999701977,
+      "compile": 108.10000000149012
+     },
+     "readyAt": 0.19
+    },
+    "ink": {
+     "step": "ready",
+     "ms": {
+      "download": 134.20000000298023,
+      "build": 24.299999997019768,
+      "compile": 67.60000000149012
+     },
+     "readyAt": 0.28
+    }
+   }
+  },
+  "gate": {
+   "introLifted_s": 0.33,
+   "frames": 1731,
+   "harnessStalls": 2,
+   "dt_ms": {
+    "p50": 16.7,
+    "p95": 16.8,
+    "p99": 16.8,
+    "max": 33.3,
+    "over25": 1,
+    "over50": 0
+   },
+   "playhead": {
+    "jumps": 0,
+    "worstStepVsAllowed": 0.998,
+    "overGateLimit": 0,
+    "chapterSequence": "0→1→2→3→4→5→6→7→8",
+    "skipped": false
+   },
+   "catchUp_s": 3.12,
+   "pipelines": {
+    "compiledBeforeIntroLifted": 13,
+    "syncOnVisibleFrames": 2,
+    "syncList": [
+     "pipe:SYNC:qalam/MeshStandardNodeMaterial",
+     "pipe:SYNC:Render Pipeline/RenderPipeline"
+    ]
+   },
+   "gpuLag_ms": {
+    "n": 60,
+    "p50": 3.7,
+    "p95": 7.9,
+    "max": 26.6
+   },
+   "waitNote": [
+    "wait shown",
+    "wait hidden"
+   ],
+   "resizes": 1,
+   "assets": {
+    "world": {
+     "step": "ready",
+     "ms": {
+      "download": 0.9000000059604645,
+      "build": 82.69999999552965,
+      "compile": 100.20000000298023
+     },
+     "readyAt": 0.18
+    },
+    "ink": {
+     "step": "ready",
+     "ms": {
+      "download": 20137.90000000596,
+      "build": 36.900000005960464,
+      "compile": 88.79999999701977
+     },
+     "readyAt": 20.27
+    }
+   }
+  }
+ }
+}

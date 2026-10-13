@@ -13,8 +13,8 @@ arrive in R3–R5. Progress: [`docs/status.html`](docs/status.html).
 ## How it works, in plain words
 
 - **Scrolling chooses the moment; time plays it.** The piece is a row of chapters. Scrolling asks for a
-  chapter, and the animation plays at its own calm pace. A fast flick makes it play a little faster —
-  it never jumps or skips.
+  chapter, and that chapter plays at its own calm pace. Chapters you scroll past are fast-forwarded
+  like a time-lapse, so the picture catches up within seconds. It never jumps or skips.
 - **Nothing appears before it is ready.** Each chapter lists what it needs (images, shapes, shader
   programs). Those are downloaded, built and prepared before the chapter may begin, so nothing freezes
   mid-scroll. If the reader arrives early, the page waits quietly.

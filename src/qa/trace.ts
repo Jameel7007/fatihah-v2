@@ -16,6 +16,8 @@ export interface TraceFrame {
   req: number;
   lim: number;
   rate: number;
+  /** the chapter the reader's scroll position is in */
+  rd: number;
   ev?: string[];
 }
 

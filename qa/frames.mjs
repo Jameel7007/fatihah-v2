@@ -2,11 +2,12 @@
 // times"). Pins the playhead with ?at=S (no scroll, grain and breath held still), waits for the
 // picture to settle and saves one PNG per position for the phone (390 × 660 @3) and the desktop.
 //
-// Usage: npm run build && node qa/frames.mjs [--at 0,0.5,1,1.5] [--only phone|desktop] [--out DIR] [--base URL] [--q k=v&…]
+// Usage: npm run build && node qa/frames.mjs [--at 0,0.5,1,1.5] [--only phone|desktop] [--out DIR] [--base URL] [--q k=v&…] [--keep N] [--no-prune]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BROWSER, VIEWPORTS, capture, launch, previewBase, sleep } from './headless.mjs';
+import { prune } from './retention.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -33,4 +34,7 @@ for (const [name, vp] of Object.entries(VIEWPORTS)) {
   }
 }
 console.log(`frames → ${out}`);
+// retention: after a successful run, thin older runs (qa/retention.mjs; --keep N, --no-prune). A run
+// written elsewhere with --out is not a qa/output run and is never touched.
+if (!args.includes('--no-prune')) prune(opt('--keep') ? { keep: Number(opt('--keep')) } : {});
 process.exit(0);

@@ -12,11 +12,12 @@
 // and saves review frames at fixed moments. The GPU is this Mac's, not a phone's: frame times
 // here show hitches and structure, not phone speed — the owner's phone is the real test.
 //
-// Usage: npm run build && node qa/phone-session.mjs [--base URL] [--out DIR] [--record] [--desktop] [--webgl2] [--only steady|flick|gate]
+// Usage: npm run build && node qa/phone-session.mjs [--base URL] [--out DIR] [--record] [--desktop] [--webgl2] [--only steady|flick|gate] [--keep N] [--no-prune]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BROWSER, capture, launch, previewBase, sleep } from './headless.mjs';
+import { prune } from './retention.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -214,4 +215,6 @@ if (record) {
 writeFileSync(join(out, 'report.json'), JSON.stringify({ base, viewport: `${W}x${H}@${DPR}`, results }, null, 1));
 console.log(JSON.stringify(results, (k, v) => (k === 'assets' ? undefined : v), 1));
 console.log(`\nframes and report → ${out}`);
+// retention: after a successful run, thin older runs (qa/retention.mjs; --keep N, --no-prune)
+if (!args.includes('--no-prune')) prune(opt('--keep') ? { keep: Number(opt('--keep')) } : {});
 process.exit(0);

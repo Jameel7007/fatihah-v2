@@ -50,6 +50,10 @@ jameel7007.github.io/fatihah-manuscript) stays untouched until v2 replaces it at
   the dev server at ~300 % CPU.
   Headless Brave's Page.captureScreenshot can deadlock the page at 2880×1800 during the writing: desktop captures go
   through the screencast (`capture()` in qa/headless.mjs, CSS-pixel size); phone-size screenshots are safe.
+- qa/output retention (`qa/retention.mjs`, run by the harness after each successful run, or `npm run qa:prune
+  [-- --dry-run] [--keep N]`): the newest 3 runs of each kind stay whole (`--keep N` / `FATIHAH_QA_KEEP`;
+  `--no-prune` skips it); older runs keep only report.json and *.mp4. A run folder holding a file named KEEP is never
+  thinned; non-run folders are never touched. Deliverables belong in docs/review (tracked), not qa/output.
 - Review frames: `node qa/frames.mjs --at 0.2,1,1.5 [--only phone] [--q dbg=normal]` (pinned playhead, PNG per screen).
 - URL switches: `?hud=1` fps readout · `?trace=1` per-frame record in `window.__trace` · `?profile=phone|laptop|desktop`
   · `?at=S` pin the playhead · `?dbg=normal|dust|tag` shading normals / every mote unlit / the ink's āyah tag · `?nosweep` no light pass · `?gateDelay=MS` hold the ink download back · `?backend=webgl2`.

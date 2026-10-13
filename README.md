@@ -3,7 +3,7 @@
 Sūrat al-Fātiḥah, the opening chapter of the Qurʾān, written on a parchment in the dark — verse by
 verse, with a reed pen — and then raised into gold. This is the second version of
 [the Al-Fātiḥah manuscript](https://jameel7007.github.io/fatihah-manuscript/), rebuilt for more motion
-and to feel smooth on a phone.
+and to feel smooth on a phone. Live (work in progress): <https://jameel7007.github.io/fatihah-v2/>
 
 **Status:** milestone R0 of R6 — the foundations: the dark world and the parchment on a phone, the way
 scrolling drives the piece, and the checks that keep it smooth. The writing, the travelling camera,

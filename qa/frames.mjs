@@ -6,7 +6,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BROWSER, VIEWPORTS, launch, previewBase, sleep } from './headless.mjs';
+import { BROWSER, VIEWPORTS, capture, launch, previewBase, sleep } from './headless.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -28,9 +28,8 @@ for (const [name, vp] of Object.entries(VIEWPORTS)) {
     let ok = false;
     for (let i = 0; i < 120 && !ok; i++) { await sleep(150); ok = Boolean(await c.evalJs('window.__boot ?? null')); }
     await sleep(1400); // the intro's fade
-    const r = await c.send('Page.captureScreenshot', { format: 'png' });
     const file = `${name}-s${s.toFixed(2)}.png`;
-    writeFileSync(join(out, file), Buffer.from(r.data, 'base64'));
+    writeFileSync(join(out, file), Buffer.from(await capture(c, { screencast: !vp.mobile }), 'base64'));
   }
 }
 console.log(`frames → ${out}`);

@@ -6,13 +6,15 @@
 // REQUEST, the Timeline moves the playhead toward it at the chapters' own pace (never past a
 // chapter whose assets are not ready), and the picture is drawn as a pure function of the playhead.
 
-import { REVISION, Scene } from 'three/webgpu';
+import { REVISION, RenderTarget, Scene, Vector3 } from 'three/webgpu';
 import { chooseProfile } from './core/profile.ts';
 import { createRenderer } from './core/renderer.ts';
 import { Timeline } from './core/timeline.ts';
 import { AssetGate, type AssetDef } from './core/assetGate.ts';
-import { assetUrl } from './core/url.ts';
-import { CHAPTERS, CHAPTER_ASSETS, sample } from './chapters/story.ts';
+import { CHAPTERS, CHAPTER_ASSETS, onSheet, sample, setPenTrack } from './chapters/story.ts';
+import { buildInk, downloadInk, type InkPack } from './ink/atlas.ts';
+import { InkPass } from './ink/inkPass.ts';
+import { Qalam } from './world/qalam.ts';
 import { Camera } from './world/camera.ts';
 import { createGrade } from './world/grade.ts';
 import { buildWorld, type World } from './world/parchment.ts';
@@ -35,18 +37,13 @@ const profile = chooseProfile(q);
 const dpr = Math.min(window.devicePixelRatio || 1, profile.dprCap);
 
 // ---- 2. downloads start now, before the renderer ------------------------------------------
-// The ink pack is what R2 writes with; in R0 it gates the 'page' chapter so the door can be
-// seen working. ?gateDelay=MS holds its download back to test the wait on purpose.
+// The ink pack (atlases, instance table, pen paths) is what R2 writes with; it gates the āyah
+// chapters. ?gateDelay=MS holds its download back to test the wait on purpose.
 const gateDelay = Number(q.get('gateDelay') ?? '0');
-const fetchBitmap = async (path: string): Promise<ImageBitmap> => createImageBitmap(await (await fetch(assetUrl(path))).blob());
 const inkDownload = async (): Promise<unknown> => {
-  const [mtsdf, prog, instances] = await Promise.all([
-    fetchBitmap('text/ink-mtsdf.png'),
-    fetchBitmap('text/ink-prog.png'),
-    fetch(assetUrl('text/ink-instances.json')).then((r) => r.json() as Promise<unknown>),
-  ]);
+  const d = await downloadInk();
   if (gateDelay > 0) await new Promise((r) => setTimeout(r, gateDelay));
-  return { mtsdf, prog, instances };
+  return d;
 };
 
 // ---- 3. the renderer, scene, camera, grade -------------------------------------------------
@@ -101,6 +98,12 @@ const precompile = async (): Promise<void> => {
 
 // ---- 4. the asset gate ---------------------------------------------------------------------
 let world = null as World | null;
+let ink = null as InkPack | null;
+let inkPass = null as InkPass | null;
+let qalam = null as Qalam | null;
+const UP = new Vector3(0, 1, 0);
+const nextFrame = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => r()));
+const tip = new Vector3();
 const assets: AssetDef[] = [
   {
     id: 'world',
@@ -118,10 +121,42 @@ const assets: AssetDef[] = [
       grade.render();
     },
   },
-  { id: 'ink', download: inkDownload, build: (data) => data },
+  {
+    id: 'ink',
+    download: inkDownload,
+    build: async (data) => {
+      // three pieces of main-thread work, one per frame
+      ink = buildInk(data as Parameters<typeof buildInk>[0]);
+      setPenTrack(ink.pen);
+      await nextFrame();
+      cam.invalidate(); // the writing chapters' shots follow the pen: re-plan their distances now,
+      cam.apply(timeline.s); // inside the gate's build step rather than on a visible frame
+      await nextFrame();
+      inkPass = new InkPass(ink, world!.ink, world!.fiber);
+      qalam = new Qalam();
+      scene.add(qalam.group);
+      return ink;
+    },
+    compile: async () => {
+      await inkPass!.prepare(renderer, ink!.tMin);
+      // the pen's pipelines (beauty and shadow) compile in one hidden frame with the pen on the page
+      const st = sample(timeline.s);
+      qalam!.place(onSheet(0.15, 0.2), UP, 0.01, true);
+      await precompile();
+      const scratch = new RenderTarget(8, 8);
+      grade.renderTo(scratch);
+      scratch.dispose();
+      qalam!.place(onSheet(0.15, 0.2), UP, 0, st.pen);
+    },
+  },
 ];
 const gate = new AssetGate(assets, CHAPTER_ASSETS);
 gate.onChange = (id, step) => trace.mark(`asset ${id} ${step}`);
+// a quiet moment: still under the intro, the playhead at rest for 250 ms, or the reader waiting
+// at the door of a chapter that needs this very asset
+let restingSince = -1;
+let quietWaiters: Array<() => void> = [];
+gate.quiet = () => new Promise<void>((resolve) => { quietWaiters.push(resolve); });
 gate.start();
 
 // ---- 5. the frame loop ---------------------------------------------------------------------
@@ -133,6 +168,8 @@ let waitingSince = -1;
 let waitShown = false;
 let liftedAt = 0;
 let lastDeform = 0;
+let gpuLagPending = false;
+let lastGpuLag = 0;
 
 const liftIntro = (): void => {
   introDone = true;
@@ -164,6 +201,16 @@ renderer.setAnimationLoop((now: number) => {
   const deformV = dt > 0 ? (st.deformP - lastDeform) / dt : 0;
   lastDeform = st.deformP;
   world.pose(renderer, st.deformP, st.tilt, dt, deformV);
+  // the ink as it is at this moment of the ink clock, sharpest around where the camera looks;
+  // the nib where the pen track says it is
+  if (inkPass && ink) {
+    inkPass.run(renderer, st.inkT, st.shot.look.x / 0.78 + 0.5, st.shot.look.z + 0.5);
+    if (st.pen) {
+      const p = ink.pen.at(st.inkT);
+      tip.copy(onSheet(p.x, p.y));
+      qalam!.place(tip, UP, p.lift, true);
+    } else qalam!.place(tip, UP, 0, false);
+  }
   // the candle breathes: two slow, incommensurate swells (live only; pinned QA frames hold still)
   const tSec = now / 1000;
   const breath = pinned !== null ? 1 : 1 + 0.018 * Math.sin(tSec * 1.46) + 0.009 * Math.sin(tSec * 3.7 + 1.3);
@@ -175,6 +222,16 @@ renderer.setAnimationLoop((now: number) => {
   grade.render();
 
   if (!introDone && ++presented >= 3) liftIntro();
+
+  // release main-thread asset work at a quiet moment
+  if (timeline.rate === 0) { if (restingSince < 0) restingSince = now; } else restingSince = -1;
+  const atDoor = request > timeline.limit + 1e-3 && timeline.s >= timeline.limit - 1e-3;
+  if (quietWaiters.length && (!introDone || atDoor || (restingSince >= 0 && now - restingSince > 250))) {
+    const w = quietWaiters;
+    quietWaiters = [];
+    trace.mark('quiet');
+    w.forEach((f) => f());
+  }
 
   // the scroll cue: once the opening has played, until the reader's first scroll
   if (!cueDone && scrollY > 24) {
@@ -193,6 +250,20 @@ renderer.setAnimationLoop((now: number) => {
     trace.mark(showWait ? 'wait shown' : 'wait hidden');
   }
 
+  // GPU lag (trace): how long the GPU takes to finish what has been submitted. A frame loop can
+  // keep its 60 Hz cadence while the GPU falls behind; a growing lag is the sign of it.
+  if (trace.on && !gpuLagPending && now - lastGpuLag > 500) {
+    const device = (renderer.backend as unknown as { device?: GPUDevice }).device;
+    if (device) {
+      gpuLagPending = true;
+      lastGpuLag = now;
+      const t = performance.now();
+      void device.queue.onSubmittedWorkDone().then(() => {
+        trace.mark(`gpulag ${(performance.now() - t).toFixed(1)}`);
+        gpuLagPending = false;
+      });
+    }
+  }
   trace.frame({ at: +now.toFixed(1), dt: +(dt * 1000).toFixed(2), cpu: +(performance.now() - cpuStart).toFixed(2), s: +timeline.s.toFixed(5), ch: timeline.chapter, req: +request.toFixed(4), lim: timeline.limit, rate: +timeline.rate.toFixed(3) });
   hud.update(dt, `${profile.name} · ${backend} · dpr ${dpr} · ${CHAPTERS[timeline.chapter]!.id} ${timeline.t.toFixed(2)} → ${request.toFixed(2)}${timeline.limit < CHAPTERS.length ? ` · gate ${timeline.limit}` : ''}`);
 });

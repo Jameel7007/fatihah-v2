@@ -37,10 +37,16 @@ export class AssetGate {
   private readonly t0 = performance.now();
   /** called whenever any asset changes step (HUD, trace, intro progress) */
   onChange: (id: string, step: AssetStep) => void = () => {};
+  /** Resolves at a quiet moment for main-thread work (v1 lesson: an attach mid-scroll is a
+   *  hitch). Builds and compiles of assets after the first chapter wait for it. */
+  quiet: () => Promise<void> = async () => {};
 
   /** `chapters[k]` lists the asset ids chapter k needs. */
+  private readonly firstChapter: Set<string>;
+
   constructor(defs: AssetDef[], chapters: string[][]) {
     this.chapters = chapters;
+    this.firstChapter = new Set(chapters[0] ?? []);
     for (const def of defs) {
       const ms: Entry['ms'] = {};
       const t = performance.now();
@@ -73,6 +79,7 @@ export class AssetGate {
     e.ready = this.chain = this.chain.then(async () => {
       try {
         const data = await e.downloaded;
+        if (!this.firstChapter.has(id)) await this.quiet();
         this.set(id, 'building');
         let t = performance.now();
         const built = await e.def.build(data);

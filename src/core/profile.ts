@@ -23,14 +23,18 @@ export interface Profile {
   residual: boolean;
   /** particle budget multiplier (R1+: dust, motes, sparks) — the first thing a phone scales down */
   particles: number;
+  /** height of the ink layer's sheet-space target (texels) */
+  inkHeight: number;
+  /** edge of the ink's detail window target (texels) — the close shots' letters */
+  inkDetail: number;
   /** touch layout: canvas sized to 100svh, scroll measured against 100lvh (toolbar-proof) */
   touch: boolean;
 }
 
 const PROFILES: Readonly<Record<ProfileName, Omit<Profile, 'name' | 'touch'>>> = {
-  phone: { dprCap: 1.75, shadowMap: 1024, shadowBlockerTaps: 0, shadowFilterTaps: 5, residual: false, particles: 0.35 },
-  laptop: { dprCap: 2.0, shadowMap: 2048, shadowBlockerTaps: 8, shadowFilterTaps: 13, residual: true, particles: 0.7 },
-  desktop: { dprCap: 2.0, shadowMap: 2048, shadowBlockerTaps: 16, shadowFilterTaps: 25, residual: true, particles: 1 },
+  phone: { dprCap: 1.75, shadowMap: 1024, shadowBlockerTaps: 0, shadowFilterTaps: 5, residual: false, particles: 0.35, inkHeight: 1024, inkDetail: 1536 },
+  laptop: { dprCap: 2.0, shadowMap: 2048, shadowBlockerTaps: 8, shadowFilterTaps: 13, residual: true, particles: 0.7, inkHeight: 1536, inkDetail: 2048 },
+  desktop: { dprCap: 2.0, shadowMap: 2048, shadowBlockerTaps: 16, shadowFilterTaps: 25, residual: true, particles: 1, inkHeight: 1536, inkDetail: 2048 },
 };
 
 export function chooseProfile(query: URLSearchParams): Profile {

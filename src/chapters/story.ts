@@ -8,21 +8,41 @@
 //        beam, while the camera pushes in from far to a close low view of the roll's right end.
 //   R1 · unroll  — follows the scroll. A low camera travels with the roll as it pays out across
 //        the page, then rises to look down on the opened sheet.
-//   R0 · page    — timed placeholder until R2: the sheet settles flat, the camera rises over it.
+//   page         — timed: the sheet settles flat and the camera rises over it to read.
+//   R2 · āyah 1–7 — timed, one chapter per āyah on the INK CLOCK (src/ink/schedule.ts): the qalam
+//        writes it, the camera follows the nib close and low and breathes out at each line
+//        break, the rosette blooms, the ink dries. Āyah 1 opens with the camera coming down.
+//   written      — timed placeholder until R3/R4: the pen lifts away, the camera rises over the page.
 
 import { Vector3 } from 'three';
 import type { ChapterSpec } from '../core/timeline.ts';
 import { E1, E2, EUnroll, span } from '../core/easing.ts';
 import { evalDeform } from '../world/field/deform.ts';
+import { cpuPose } from '../world/field/cpuPose.ts';
+import { WRITTEN_S } from '../ink/schedule.ts';
+import type { PenTrack } from '../ink/pen.ts';
+import timing from '../ink/timing.json' with { type: 'json' };
+
+const SPANS = timing.spans;
 
 export const CHAPTERS: ChapterSpec[] = [
   { id: 'opening', duration: 7.0, scroll: 0.8, scrub: false },
   { id: 'unroll', duration: 8.0, scroll: 3.0, scrub: true },
-  { id: 'page', duration: 4.2, scroll: 1.4, scrub: false },
+  { id: 'page', duration: 4.2, scroll: 1.0, scrub: false },
+  ...SPANS.map((sp) => ({ id: `ayah${sp.ayah}`, duration: sp.t1 - sp.t0, scroll: 0.8, scrub: false })),
+  { id: 'written', duration: WRITTEN_S, scroll: 1.2, scrub: false },
 ];
+const FIRST_AYAH = 3;
+const WRITTEN = FIRST_AYAH + SPANS.length;
 
 /** asset ids each chapter needs before it may begin (see main.ts for the definitions) */
-export const CHAPTER_ASSETS: string[][] = [['world'], ['world'], ['world', 'ink']];
+export const CHAPTER_ASSETS: string[][] = CHAPTERS.map((_, k) => (k >= FIRST_AYAH ? ['world', 'ink'] : ['world']));
+
+/** The pen track arrives with the ink (an asset); the writing chapters' shots follow it. */
+let pen: PenTrack | null = null;
+export function setPenTrack(track: PenTrack): void {
+  pen = track;
+}
 
 export interface Shot {
   /** unit vector from the look point toward the camera */
@@ -52,6 +72,10 @@ export interface FrameState {
   light: number;
   /** gold dust in the key light 0..1 (scaled by the profile's particle budget) */
   dust: number;
+  /** the ink clock (seconds): timing.tMin = nothing written yet */
+  inkT: number;
+  /** the qalam is in the picture */
+  pen: boolean;
   shot: Shot;
 }
 
@@ -152,16 +176,18 @@ export function sample(s: number): FrameState {
         exposure: E2(span(t, 0, 0.18)),
         light,
         dust: light,
+        inkT: timing.tMin,
+        pen: false,
         shot: blendShot(far, openingEnd(), k),
       };
     }
     case 'unroll': {
       const deformP = 0.06 + 0.32 * EUnroll(t);
       const tilt = lerp(TILT0, TILT_OPEN, E2(t));
-      return { chapter, t, deformP, tilt, exposure: 1, light: 1, dust: 1, shot: unrollShot(t, deformP, tilt) };
+      return { chapter, t, deformP, tilt, exposure: 1, light: 1, dust: 1, inkT: timing.tMin, pen: false, shot: unrollShot(t, deformP, tilt) };
     }
-    default: {
-      // 'page' (R0 placeholder until R2): the sheet settles flat and the camera rises over it
+    case 'page': {
+      // the sheet settles flat and the camera rises over it to read
       const k = E1(t);
       return {
         chapter, t,
@@ -170,8 +196,58 @@ export function sample(s: number): FrameState {
         exposure: 1,
         light: 1,
         dust: 1,
-        shot: blendShot(shot(D_OPEN, OPEN_LOOK, 46), shot(D_READ, READ_LOOK, 55, { fitText: 1 }), k),
+        inkT: timing.tMin,
+        pen: false,
+        shot: blendShot(shot(D_OPEN, OPEN_LOOK, 46), readShot(), k),
       };
+    }
+    case 'written': {
+      // placeholder until R3/R4: the pen lifts away and the camera rises over the written page
+      const t7 = SPANS[SPANS.length - 1]!.t1;
+      return {
+        chapter, t,
+        deformP: 0.38,
+        tilt: 0,
+        exposure: 1,
+        light: 1,
+        dust: 1,
+        inkT: t7 + t * WRITTEN_S,
+        pen: t < 0.85,
+        shot: blendShot(followShot(t7), readShot(), smooth(t)),
+      };
+    }
+    default: {
+      // an āyah: the ink clock runs through the chapter at the authored pace
+      const sp = SPANS[chapter - FIRST_AYAH]!;
+      const inkT = sp.t0 + t * (sp.t1 - sp.t0);
+      let sh = followShot(inkT);
+      // āyah 1 opens on the reading view; the camera comes down to the nib before the first letter
+      if (chapter === FIRST_AYAH) sh = blendShot(readShot(), sh, smooth(span(inkT, sp.t0, sp.w0 - 0.2)));
+      return { chapter, t, deformP: 0.38, tilt: 0, exposure: 1, light: 1, dust: 1, inkT, pen: true, shot: sh };
     }
   }
 }
+
+function readShot(): Shot {
+  return shot(D_READ, READ_LOOK, 55, { fitText: 1 });
+}
+
+// the follow shot: close and low from the front-left (the pen leans away up and to the right),
+// looking at where the nib has just been and is about to go
+const D_FOLLOW = unit(-0.2, 0.72, 0.66);
+const FOLLOW_DIST = 0.4;
+const FLAT = evalDeform(0.38);
+
+/** world position on the flat written sheet of composition point (x, y) */
+export function onSheet(x: number, y: number): Vector3 {
+  const q = cpuPose(x / 0.78, y, FLAT);
+  return v3(q.x, q.y, q.z);
+}
+
+function followShot(inkT: number): Shot {
+  if (!pen) return shot(D_FOLLOW, onSheet(0.15, 0.2), 45, { absDist: FOLLOW_DIST, absW: 1 });
+  const [lx, ly] = pen.look(inkT);
+  return shot(D_FOLLOW, onSheet(lx, ly), 45, { absDist: FOLLOW_DIST * (1 + 0.5 * pen.lineBreak(inkT)), absW: 1 });
+}
+
+export { FIRST_AYAH, WRITTEN };

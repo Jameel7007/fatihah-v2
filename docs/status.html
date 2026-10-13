@@ -56,13 +56,33 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 <div class="rail" aria-label="Milestones">
   <div><b>R0</b>Foundations · done, 60 fps on your phone</div>
-  <div class="now"><b>R1</b>The opening · awaiting your phone check</div>
-  <div><b>R2</b>The writing</div>
+  <div><b>R1</b>The opening · done, 60 fps on your phone</div>
+  <div class="now"><b>R2</b>The writing · awaiting your phone check</div>
   <div><b>R3</b>Between the āyāt</div>
   <div><b>R4</b>The rise</div>
   <div><b>R5</b>The ending</div>
   <div><b>R6</b>Polish and launch</div>
 </div>
+
+<h2>R2: the writing</h2>
+<p>After the page settles, the camera comes down to a reed pen, a qalam, and the seven āyāt are written, one chapter each. Scrolling chooses the āyah; the pen writes it at its own pace. The pen's path comes from the same data that reveals the ink, so the nib is always on the letter being formed. It lifts a little between strokes, more between words, and most at a line break, where the camera also eases back. The diacritics are flicked in after each word, as in v1.</p>
+<p>The ink is alive. Under the nib is a wet, glossy bead. The stroke stays darker and glossier for a couple of seconds as it dries. Where the pen paused at the start and end of a stroke, the ink spreads a little into the grain. When an āyah is finished, the pen rises and the rosette after it opens petal by petal, with its numeral last.</p>
+<p>The close shots needed sharper ink than v1 ever showed. A second, high-resolution ink layer now follows the camera, about six times sharper than the full page.</p>
+<figure>
+  <img src="r2-strip.jpg" alt="Phone frames: the camera coming down to the pen, the Basmalah being written letter by letter, a rosette, the written page">
+  <figcaption>Phone frames: the descent to the pen, the Basmalah being written, an āyah's end with its rosette, and the finished page.</figcaption>
+</figure>
+<div class="tbl"><table>
+<thead><tr><th>Āyah</th><th>Writing</th><th>Whole chapter (pen settles, writes, rosette, rest)</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="n">4.4 s</td><td class="n">10.6 s (includes the camera's descent)</td></tr>
+<tr><td>2</td><td class="n">4.1 s</td><td class="n">6.7 s</td></tr>
+<tr><td>3</td><td class="n">3.9 s</td><td class="n">6.5 s</td></tr>
+<tr><td>4</td><td class="n">2.8 s</td><td class="n">5.4 s</td></tr>
+<tr><td>5</td><td class="n">5.4 s</td><td class="n">8.0 s</td></tr>
+<tr><td>6</td><td class="n">5.0 s</td><td class="n">7.6 s</td></tr>
+<tr><td>7</td><td class="n">10.8 s</td><td class="n">13.4 s (ten words over three lines)</td></tr>
+</tbody></table></div>
 
 <h2>R1: the opening</h2>
 <p>The first chapter now plays by itself once the page has loaded. The stars come up out of the dark. A warm light comes up on the rolled parchment with a small flicker, like a candle catching, and then keeps breathing gently. Gold dust drifts in its beam. Meanwhile the camera pushes in slowly from far away to a low view of the roll's end, where its turns show.</p>
@@ -90,7 +110,7 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 <tr><td>The text never changes</td><td>v1's text, ink and gold pipeline is carried over unchanged. Rebuilt here, it produces every file byte for byte, and every build checks the seven āyāt letter for letter.</td></tr>
 </tbody></table></div>
 
-<h2>Measured (R1 build)</h2>
+<h2>Measured (R2 build)</h2>
 <p>Headless Brave on this Mac, cold load of the production build, real scroll gestures. The GPU is the Mac's, so these numbers show that nothing stutters or jumps by design. They do not show phone speed. Your phone is the real test.</p>
 <div class="tbl"><table>
 <thead><tr><th>Check</th><th>Phone 390×660 (WebGPU)</th><th>Desktop 1440×900</th><th>Phone (WebGL2)</th></tr></thead>
@@ -101,29 +121,34 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 <tr><td>Shaders compiled on a visible frame</td><td class="n ok">0</td><td class="n ok">0</td><td class="n ok">0</td></tr>
 <tr><td>Ink held back 15 s: page waits, note shows, continues smoothly</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">yes</td></tr>
 <tr><td>Intro gone after</td><td class="n">0.3 s</td><td class="n">0.3 s</td><td class="n">0.4–1.5 s</td></tr>
-<tr><td>Chapter boundaries agree; no camera jumps (unit test, phone and desktop shapes)</td><td class="ok" colspan="3">yes, 11 of 11 checks pass</td></tr>
+<tr><td>GPU keeping up (time to finish submitted work: typical / 95th percentile)</td><td class="n">9 / 14 ms</td><td class="n">14 / 16 ms</td><td class="n">not measurable</td></tr>
+<tr><td>Chapter boundaries agree; no camera or pen jumps; the nib on every letter (unit tests)</td><td class="ok" colspan="3">yes, 17 of 17 checks pass</td></tr>
 </tbody></table></div>
 <p>Frames that stalled while the harness itself was taking a screenshot are listed separately in the report. They are not counted above.</p>
+<p>New in R2: the browser keeps calling the frame loop 60 times a second even when the graphics chip falls behind, so frame intervals alone can look perfect while the picture lags. The sessions now also measure how long the chip takes to finish its work. The desktop profile runs closest to its limit (about 14 ms of a 16.7 ms frame at 2880 × 1800), which the R6 performance pass will look at. When the ink arrives late, its preparation waits for a quiet moment and costs two or three 33–50 ms frames while the picture is still.</p>
 
 <h2>Not yet measured</h2>
 <ul>
-<li class="wait">The R1 opening on your phone: frame rate with the dust, and how the pace feels.</li>
+<li class="wait">The writing on your phone: frame rate while the ink is drawn, and how the pace of the pen feels.</li>
 <li>Load time on a mobile connection.</li>
 <li>Reduced motion and the fallback for browsers without WebGPU or WebGL2. Both are in R6.</li>
 </ul>
 
 <div class="steps">
-<p class="eyebrow">Your R1 check on the phone</p>
+<p class="eyebrow">Your R2 check on the phone</p>
 <ol>
 <li>Open <a href="https://jameel7007.github.io/fatihah-v2/?hud=1">jameel7007.github.io/fatihah-v2/?hud=1</a> on your phone. The frame rate shows at the top left.</li>
-<li>Let the opening play without touching the screen (about 7 seconds), watching for the dust in the light.</li>
-<li>Scroll slowly through the unroll, then flick hard to the bottom and back to the top.</li>
-<li>Tell me the fps you saw, and how the pace of the push-in and the unroll feels: too slow, too fast, or right.</li>
+<li>Scroll past the unroll until the camera comes down to the pen, then let āyah 1 be written without touching the screen.</li>
+<li>Scroll a little to go on to the next āyah, one at a time, as far as you like. Then flick hard to the bottom and back to the top.</li>
+<li>Tell me the fps you saw, and how the writing feels: the pen's pace, how close the camera is, and whether the letters look sharp.</li>
 </ol>
 </div>
 
 <h2>Decisions</h2>
 <ul class="log">
+<li><time>2026-10-13</time>Pace: v1's rhythm for letters, word gaps and diacritics is kept (at 70 seconds per unit of v1's scroll). Wherever the next stroke begins away from where the last one ended, the pen gets time to travel, at 60 cm/s. A line break gets at least 1.1 s. Āyāt 1–6 write in 2.8–5.4 s; āyah 7, ten words, in 10.8 s.</li>
+<li><time>2026-10-13</time>The camera's look point follows the pen through a time filter: about one second of the pen's path, weighted slightly ahead. It eases back by up to 1.5× at each line break.</li>
+<li><time>2026-10-13</time>Assets that arrive after the intro wait for a quiet moment before preparing: the playhead at rest, or the reader waiting for that very asset. On a slow connection the ink can then never cost a frame in the middle of the unroll.</li>
 <li><time>2026-10-13</time>The dust moves along fixed drifting paths worked out directly on the graphics card. Nothing has to be simulated from frame to frame, so the compute pass the plan suggested isn't needed, and it runs the same on WebGPU and WebGL2. The motes live in the light's cone, so almost every one is in the beam. Phones get 35% of the desktop count.</li>
 <li><time>2026-10-13</time>Close shots are authored on a 16:10 screen. A narrower screen stands back by the square root of the width difference (about 1.65× on a phone), so the same move still fits.</li>
 <li><time>2026-10-13</time>Fixed the parchment's shading normals, which were flat per grid row (visible as bands up close). v1 has the same flaw but only shows the page from further away; v1 is left untouched.</li>
@@ -135,6 +160,8 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 <h2>Ledger</h2>
 <ul class="log">
+<li><time>2026-10-13</time>R2 built: the qalam and its track (from the stroke-order field), the ink clock with travel time, seven āyah chapters, the follow camera with line-break pull-backs, living ink (wet bead, drying sheen, pause blooms), rosettes that bloom, the sharp detail window, and the pen's descent and lift-away. Fixed along the way: pre-compiles that silently didn't take (a depth setting), assets preparing mid-scroll (now at quiet moments), and a harness blind spot (GPU lag now measured). Waiting for your phone check before R3.</li>
+<li><time>2026-10-13</time>You checked R1 on your phone: smooth, 60 fps. R1 closed.</li>
 <li><time>2026-10-13</time>R1 built: the timed opening (stars, candle light, gold dust, push-in), the tracking unroll and rise, a scroll cue after the opening, a chapter-continuity test and a review-frames script (qa/frames.mjs). Scripted sessions on phone, desktop and WebGL2: 60 fps, no jumps, no skips, nothing compiled on a visible frame. Waiting for your phone check before R2.</li>
 <li><time>2026-10-13</time>You checked R0 on your phone: smooth, 60 fps. R0 closed.</li>
 <li><time>2026-10-13</time>Public repo created and deployed to GitHub Pages. The scripted phone session against the live site: first cold load 3.2 s to the opening, 60 fps, no jumps, no skips, the gate test passes.</li>

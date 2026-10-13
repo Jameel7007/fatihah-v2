@@ -24,11 +24,22 @@ jameel7007.github.io/fatihah-manuscript) stays untouched until v2 replaces it at
 - Chapters live in `src/chapters/story.ts`; neighbours must agree at their boundary and the camera path must
   not jump (qa/chapters.test.ts). Close shots use `Shot.absDist` (authored at 16:10, scaled for narrow screens).
 - The scroll track height in index.html must equal Σ chapter scroll + 1 (qa/track.test.ts).
+- R2 writing: `src/ink/schedule.ts` (v1 timings → the ink clock, with pen travel time) is run at BUILD time by
+  `build/build-pen-paths.mjs`, which writes `public/text/pen-paths.json` and `src/ink/timing.json` (the āyah chapters'
+  lengths, bundled). Rerun it after changing schedule constants (qa/ink.test.ts fails if stale). `src/ink/pen.ts`
+  is the qalam's track; `src/ink/inkPass.ts` draws the ink into a page target + a sharp detail window around the
+  camera's look point (both sampled by the parchment).
+- Assets after chapter 0 build/compile only at a quiet moment (`gate.quiet`: playhead at rest 250 ms, or the
+  reader waiting for that asset). compileAsync stamps `renderer.depth` onto the context: for depth-less targets set
+  `renderer.depth = false` around it, or the real render builds a second pipeline synchronously.
 
 ## How to run
 - `npm run dev` (4530) · `npm run build` · `npm run preview` (4531) · `npm test`
 - Phone harness: `npm run build && node qa/phone-session.mjs [--desktop] [--webgl2] [--record]`
-  (headless Brave at 390×660@3, cold load, real scroll gestures; checks jumps, skips, SYNC compiles, the gate).
+  (headless Brave at 390×660@3, cold load, real scroll gestures; checks jumps, skips, SYNC compiles, the gate,
+  and GPU lag — rAF keeps a 60 Hz cadence even when the GPU falls behind, so frame intervals alone prove little).
+  Headless Brave's Page.captureScreenshot can deadlock the page at 2880×1800 during the writing: desktop captures go
+  through the screencast (`capture()` in qa/headless.mjs, CSS-pixel size); phone-size screenshots are safe.
 - Review frames: `node qa/frames.mjs --at 0.2,1,1.5 [--only phone] [--q dbg=normal]` (pinned playhead, PNG per screen).
 - URL switches: `?hud=1` fps readout · `?trace=1` per-frame record in `window.__trace` · `?profile=phone|laptop|desktop`
   · `?at=S` pin the playhead · `?dbg=normal|dust` shading normals / every mote unlit · `?gateDelay=MS` hold the ink download back · `?backend=webgl2`.

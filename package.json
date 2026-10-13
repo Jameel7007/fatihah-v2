@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test qa/*.test.ts",
     "text:verify": "node build/verify-text.mjs",
-    "text:rebuild": "node build/shape-text.mjs && node build/build-ink-atlas.mjs && node build/build-glyph-mesh.mjs && node build/build-glyph-mesh.mjs --tier=3",
+    "text:rebuild": "node build/shape-text.mjs && node build/build-ink-atlas.mjs && node build/build-glyph-mesh.mjs && node build/build-glyph-mesh.mjs --tier=3 && node build/build-pen-paths.mjs",
     "phone": "node qa/phone-session.mjs"
   },
   "dependencies": {

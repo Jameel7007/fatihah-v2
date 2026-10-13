@@ -18,8 +18,8 @@
     --arabic: "Amiri Quran", "Amiri", "Geeza Pro", serif; }
   html, body { margin: 0; background: #000; color: var(--muted); }
   /* the scroll track: the chapters' scroll lengths + one screen (qa/spacer.test.ts keeps this equal to chapters/r0.ts) */
-  #track { width: 1px; height: 620vh; }
-  @supports (height: 100lvh) { @media (pointer: coarse) { #track { height: 620lvh; } } }
+  #track { width: 1px; height: 1260vh; }
+  @supports (height: 100lvh) { @media (pointer: coarse) { #track { height: 1260lvh; } } }
   canvas#gl { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; display: block; opacity: 0; transition: opacity .9s ease-out; }
   @media (pointer: coarse) { canvas#gl { height: 100svh; } }
 

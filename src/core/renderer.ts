@@ -10,6 +10,11 @@ export async function createRenderer(canvas: HTMLCanvasElement, opts: { forceWeb
   const renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: opts.forceWebGL });
   renderer.toneMapping = AgXToneMapping;
   renderer.outputColorSpace = SRGBColorSpace;
+  // a lost GPU device stops the picture without an error anywhere; say so (and mark the trace)
+  (renderer as unknown as { onDeviceLost: (info: { api: string; message: string; reason: string | null }) => void }).onDeviceLost = (info) => {
+    console.error(`[gpu] device lost (${info.api}): ${info.reason ?? ''} ${info.message}`);
+    (window as unknown as { __deviceLost?: string }).__deviceLost = `${info.reason ?? ''} ${info.message}`;
+  };
   await renderer.init();
   const be = (renderer as unknown as { backend?: { isWebGPUBackend?: boolean } }).backend;
   const backend: Backend = be?.isWebGPUBackend === true ? 'webgpu' : 'webgl2';

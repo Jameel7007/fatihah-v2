@@ -34,6 +34,7 @@ import {
   modelWorldMatrix,
   positionWorld,
   screenCoordinate,
+  smoothstep,
   texture,
   textureLoad,
   transformNormalToView,
@@ -53,6 +54,7 @@ import { buildEnvironment, buildFiberTexture, buildUtilTexture } from './texture
 import { buildSky, type Sky } from './sky.ts';
 import type { Profile } from '../core/profile.ts';
 import { Dust, DUST_MAX } from './dust.ts';
+import { makeInkTargets, type InkTargets } from '../ink/inkPass.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type N = any;
@@ -72,6 +74,10 @@ export interface World {
   rim: SpotLight;
   field: Field;
   dust: Dust;
+  /** the ink layer's targets (sheet space, R cov · G wet · B bead) — blank until R2's ink loads */
+  ink: InkTargets;
+  /** the fibre map (the ink pass reads its grain for the bleed) */
+  fiber: Texture;
   /** the light rig 0..1 (key, fill, rim, environment) times the candle's breath */
   setLight(light: number, breath: number): void;
   /** pose the parchment: v1 deform p (0 rolled … 0.38 unrolled … 0.6 flat), tilt (rad) */
@@ -118,7 +124,8 @@ export function buildWorld(renderer: WebGPURenderer, profile: Profile, scene: Sc
   const sil = buildSilhouette();
   const field = new Field(sil);
   const residual = profile.residual ? new Residual() : null;
-  const maps = { fiber: buildFiberTexture(renderer), util: buildUtilTexture(renderer) };
+  const ink = makeInkTargets(profile.inkHeight, profile.inkDetail);
+  const maps = { fiber: buildFiberTexture(renderer), util: buildUtilTexture(renderer), ink };
 
   const sheetRoot = new Group();
   scene.add(sheetRoot);
@@ -162,6 +169,8 @@ export function buildWorld(renderer: WebGPURenderer, profile: Profile, scene: Sc
     rim,
     field,
     dust,
+    ink,
+    fiber: maps.fiber,
     setLight(light, breath) {
       key.intensity = base.key * light * breath;
       fill.intensity = base.fill * light;
@@ -192,7 +201,11 @@ export function buildWorld(renderer: WebGPURenderer, profile: Profile, scene: Sc
 interface Maps {
   fiber: Texture;
   util: Texture;
+  ink: InkTargets;
 }
+
+const INK_DRY = '#2A211B'; // v1 §14 iron-gall ink, dry …
+const INK_WET = '#17100B'; // … and wet
 
 /** v1 §7 parchment: recto/verso by face direction, fibre-perturbed normals in the field TBN,
  *  macro wear, edge darkening, sheen, geometric specular AA and thin-surface translucency. */
@@ -216,9 +229,27 @@ function parchmentMaterial(maps: Maps, pos: N, normalObj: N, tangentObj: N, suv:
   col = col.mul(float(1).sub(util.y.mul(0.05)));
   col = col.mul(float(1).sub(util.w.mul(0.12)));
   col = col.mix(color('#DCC79A').mul(util.z.sub(0.5).mul(0.1).add(1)), backAmt.mul(0.85));
+
+  // the ink (v1 §14, recto only): wet → dry colour, pooled darker in the fibre valleys; wet ink
+  // is glossier, and the bead under the nib glossiest of all. Every lerp is explicit mul/add —
+  // TSL mix() with a texture-derived factor breaks this material's lighting (v1, r185).
+  // the page-wide layer, and the sharp detail window where it covers this fragment
+  const rect: N = maps.ink.rect;
+  const dl: N = suv.sub(vec2(rect.x, rect.y)).div(vec2(rect.z, rect.w));
+  const edge: N = dl.min(float(1).sub(dl));
+  const inWin: N = smoothstep(0.0, 0.04, edge.x.min(edge.y));
+  const inkT: N = texture(maps.ink.full.texture, suv).mul(float(1).sub(inWin)).add(texture(maps.ink.detail.texture, dl.clamp(0, 1)).mul(inWin));
+  const recto: N = float(1).sub(backAmt);
+  const cov: N = inkT.r.mul(recto);
+  const wetF: N = inkT.g;
+  const inkCol: N = color(INK_DRY).mul(float(1).sub(wetF)).add(color(INK_WET).mul(wetF));
+  const cavity: N = float(1).sub(height.sub(0.5).mul(0.24));
+  col = col.mul(float(1).sub(cov)).add(inkCol.mul(cavity).mul(cov));
   m.colorNode = col;
 
-  const rBase: N = rmod.sub(0.5).mul(0.28).add(0.62).add(backAmt.mul(0.09));
+  let rBase: N = rmod.sub(0.5).mul(0.28).add(0.62).add(backAmt.mul(0.09));
+  const inkRough: N = float(0.5).sub(wetF.mul(0.26)).sub(inkT.b.mul(0.16));
+  rBase = rBase.mul(float(1).sub(cov)).add(inkRough.mul(cov));
   const nDx: N = dFdx(transformNormalToView(normalObj));
   const nDy: N = dFdy(transformNormalToView(normalObj));
   const sigma2: N = nDx.dot(nDx).add(nDy.dot(nDy)).mul(0.25);
@@ -231,7 +262,20 @@ function parchmentMaterial(maps: Maps, pos: N, normalObj: N, tangentObj: N, suv:
   const Tv: N = transformNormalToView(tangentObj);
   const Bv: N = Nv.cross(Tv);
   const k = 0.00055;
-  m.normalNode = Nv.add(Tv.mul(fn.x.mul(k))).add(Bv.mul(fn.y.mul(k))).normalize();
+  // the bead stands a hair above the page: its height gradient tilts the normal (as v1's emboss)
+  // (the bead lives under the nib, always inside the detail window)
+  const eps = 1.5 / maps.ink.detail.width;
+  const dtex = maps.ink.detail.texture;
+  const dlc: N = dl.clamp(0, 1);
+  const bR: N = texture(dtex, dlc.add(vec2(eps, 0))).b;
+  const bL: N = texture(dtex, dlc.sub(vec2(eps, 0))).b;
+  const bU: N = texture(dtex, dlc.add(vec2(0, eps))).b;
+  const bD: N = texture(dtex, dlc.sub(vec2(0, eps))).b;
+  const hBead = 0.00035;
+  // slope per unit suv = per-dl slope ÷ window size; world slope along u ÷ the sheet width
+  const gU: N = bR.sub(bL).div(rect.z.mul(2 * eps)).mul(hBead / 0.78).mul(recto).mul(inWin);
+  const gV: N = bU.sub(bD).div(rect.w.mul(2 * eps)).mul(hBead).mul(recto).mul(inWin);
+  m.normalNode = Nv.add(Tv.mul(fn.x.mul(k))).add(Bv.mul(fn.y.mul(k))).sub(Tv.mul(gU)).add(Bv.mul(gV)).normalize();
   if (new URLSearchParams(location.search).get('dbg') === 'normal') { m.colorNode = Nv.mul(0.5).add(0.5); m.normalNode = Nv; m.sheen = 0; } // QA: ?dbg=normal shows the shading normal
 
   const keyPos: N = uniform(vec3(...KEY_POS));

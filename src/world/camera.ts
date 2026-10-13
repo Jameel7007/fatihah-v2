@@ -38,6 +38,11 @@ export class Camera {
     this.sample = sample;
   }
 
+  /** Forget the planned distances (a shot's subject changed — the pen track arrived). */
+  invalidate(): void {
+    this.tableAspect = 0;
+  }
+
   /** Place the camera for playhead s at the current aspect. */
   apply(s: number): FrameState {
     const st = this.sample(s);

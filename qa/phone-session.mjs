@@ -12,11 +12,11 @@
 // and saves review frames at fixed moments. The GPU is this Mac's, not a phone's: frame times
 // here show hitches and structure, not phone speed — the owner's phone is the real test.
 //
-// Usage: npm run build && node qa/phone-session.mjs [--base URL] [--out DIR] [--record] [--desktop] [--webgl2]
+// Usage: npm run build && node qa/phone-session.mjs [--base URL] [--out DIR] [--record] [--desktop] [--webgl2] [--only steady|flick|gate]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BROWSER, launch, previewBase, sleep } from './headless.mjs';
+import { BROWSER, capture, launch, previewBase, sleep } from './headless.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -25,6 +25,7 @@ const browser = opt('--browser', BROWSER);
 const desktop = args.includes('--desktop');
 const record = args.includes('--record');
 const webgl2 = args.includes('--webgl2');
+const onlySession = opt('--only', ''); // steady | flick | gate
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = opt('--out', join(root, 'qa/output', `${desktop ? 'desktop' : 'phone'}${webgl2 ? '-webgl2' : ''}-${stamp}`));
 mkdirSync(out, { recursive: true });
@@ -38,6 +39,7 @@ const DPR = desktop ? 2 : 3;
 const query = (desktop ? 'trace=1&profile=desktop' : 'trace=1&profile=phone') + (webgl2 ? '&backend=webgl2' : '');
 
 async function session(name, extra, script) {
+  if (onlySession && onlySession !== name) return null;
   const c = await connect();
   await c.send('Page.enable');
   await c.send('Runtime.enable');
@@ -49,9 +51,11 @@ async function session(name, extra, script) {
   const mark = (label) => evalJs(`window.__trace && window.__trace.events.push({ at: performance.now(), e: 'harness:${label}' })`);
   const shot = async (label) => {
     await mark(`shot ${label}`);
-    const r = await c.send('Page.captureScreenshot', { format: 'png' });
+    if (record) await c.send('Page.stopScreencast'); // one screencast at a time
+    const data = await capture(c, { screencast: desktop });
+    if (record) await c.send('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1 });
     await mark('end');
-    writeFileSync(join(out, `${name}-${label}.png`), Buffer.from(r.data, 'base64'));
+    writeFileSync(join(out, `${name}-${label}.png`), Buffer.from(data, 'base64'));
   };
   const frames = [];
   if (record) {
@@ -70,6 +74,7 @@ async function session(name, extra, script) {
   const trace = await evalJs('window.__trace');
   const app = await evalJs('({ chapters: window.__app.chapters, limit: window.__app.timeline.limit, assets: window.__app.gate.report() })');
   c.close();
+  writeFileSync(join(out, `trace-${name}.json`), JSON.stringify(trace));
   return { name, boot, bootWall_s: (Date.now() - tBoot) / 1000, trace, app, frames };
 }
 
@@ -77,6 +82,7 @@ async function session(name, extra, script) {
 const MAX_BOOST = 2.5;
 const REVERSE_RATE = 1.6;
 function analyse(run) {
+  if (!run) return undefined;
   const { trace, app } = run;
   const durations = app.chapters.map((c) => c.duration);
   const fr = trace.frames;
@@ -102,9 +108,11 @@ function analyse(run) {
   for (let i = 1; i < fr.length; i++) {
     const a = fr[i - 1];
     const b = fr[i];
-    const k = Math.min(durations.length - 1, Math.floor(Math.min(a.s, b.s)));
+    // a step that crosses a boundary runs partly at each chapter's pace: allow the faster one
+    const ka = Math.min(durations.length - 1, Math.floor(a.s));
+    const kb = Math.min(durations.length - 1, Math.floor(b.s));
     const dtS = Math.min(b.dt, 50) / 1000; // the timeline caps a frame at 1/20 s
-    const allowed = (MAX_BOOST * REVERSE_RATE / durations[k]) * dtS + 1e-4;
+    const allowed = (MAX_BOOST * REVERSE_RATE / Math.min(durations[ka], durations[kb])) * dtS + 1e-4;
     const step = Math.abs(b.s - a.s);
     worstStep = Math.max(worstStep, step / allowed);
     if (step > allowed) jumps++;
@@ -123,6 +131,12 @@ function analyse(run) {
     dt_ms: { p50: q(0.5), p95: q(0.95), p99: q(0.99), max: dts[dts.length - 1] ?? 0, over25: dts.filter((d) => d > 25).length, over50: dts.filter((d) => d > 50).length },
     playhead: { jumps, worstStepVsAllowed: +worstStep.toFixed(3), overGateLimit: overLimit, chapterSequence: seq.join('→'), skipped },
     pipelines: { compiledBeforeIntroLifted: syncBefore, syncOnVisibleFrames: syncAfter.length, syncList: syncAfter.slice(0, 20) },
+    // the frame loop can keep its cadence while the GPU falls behind: the lag (time for the GPU to
+    // finish what was submitted, sampled every 0.5 s) shows it
+    gpuLag_ms: (() => {
+      const lags = trace.events.filter((e) => e.e.startsWith('gpulag')).map((e) => Number(e.e.split(' ')[1])).sort((a, b) => a - b);
+      return { n: lags.length, p50: lags[Math.floor(lags.length / 2)] ?? 0, p95: lags[Math.floor(lags.length * 0.95)] ?? 0, max: lags[lags.length - 1] ?? 0 };
+    })(),
     waitNote: trace.events.filter((e) => e.e.startsWith('wait')).map((e) => e.e),
     resizes: trace.events.filter((e) => e.e.startsWith('resize')).length,
     assets: app.assets,
@@ -135,7 +149,7 @@ const unrollVh = 3.0;
 const openingMs = 7000;
 const results = {};
 
-// 1 · a reader at a steady pace, with review frames at fixed moments
+// 1 · a reader at a steady pace through the opening, the unroll and the first two āyāt
 const steady = await session('steady', '', async ({ shot, scroll, evalJs }) => {
   await sleep(1500); await shot('00-opening-early');
   await sleep(openingMs - 1000); await shot('01-opening-end');
@@ -146,30 +160,32 @@ const steady = await session('steady', '', async ({ shot, scroll, evalJs }) => {
     await sleep(900);
     await shot(`0${1 + i}-unroll-${i * 25}`);
   }
-  await scroll(vh * 0.3, 500); await sleep(5200); await shot('06-page');
-  await scroll(vh * 0.6, 500); await sleep(1500); await shot('07-end');
+  await scroll(vh * 0.5, 500); await sleep(4800); await shot('06-page');
+  await scroll(vh * 0.7, 500); await sleep(5000); await shot('07-ayah1-mid');
+  await sleep(6000); await shot('08-ayah1-end');
+  await scroll(vh * 0.8, 500); await sleep(7000); await shot('09-ayah2-end');
 });
 results.steady = analyse(steady);
 
 // 2 · flicks: to the end and back to the top, hard — the playhead must not skip or jump
 const flick = await session('flick', '', async ({ shot, scroll }) => {
   await sleep(openingMs + 300);
-  await scroll(6000, 6000); await sleep(400); await shot('mid-flick');
-  await sleep(6000); await shot('after-flick-down');
-  await scroll(-6000, 6000); await sleep(9000); await shot('after-flick-up');
+  await scroll(12000, 8000); await sleep(400); await shot('mid-flick');
+  await sleep(36000); await shot('after-flick-down');
+  await scroll(-12000, 8000); await sleep(24000); await shot('after-flick-up');
 });
 results.flick = analyse(flick);
 
-// 3 · the gate: the ink pack held back 15 s while the reader rushes ahead
+// 3 · the gate: the ink pack held back 20 s while the reader rushes ahead to the writing
 const gated = await session('gate', '&gateDelay=20000', async ({ shot, scroll }) => {
   await sleep(openingMs + 300);
-  await scroll(6000, 6000); await sleep(7000); await shot('waiting');
-  await sleep(10000); await shot('released');
+  await scroll(6000, 6000); await sleep(9000); await shot('waiting');
+  await sleep(12000); await shot('released');
 });
 results.gate = analyse(gated);
 
 if (record) {
-  for (const run of [steady, flick]) {
+  for (const run of [steady, flick].filter(Boolean)) {
     const dir = join(out, `rec-${run.name}`);
     mkdirSync(dir, { recursive: true });
     const lines = [];
@@ -184,7 +200,6 @@ if (record) {
 }
 
 writeFileSync(join(out, 'report.json'), JSON.stringify({ base, viewport: `${W}x${H}@${DPR}`, results }, null, 1));
-writeFileSync(join(out, 'trace-steady.json'), JSON.stringify(steady.trace));
 console.log(JSON.stringify(results, (k, v) => (k === 'assets' ? undefined : v), 1));
 console.log(`\nframes and report → ${out}`);
 process.exit(0);

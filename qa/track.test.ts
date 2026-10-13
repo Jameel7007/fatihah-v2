@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 test('index.html track height = Σ chapter scroll + one viewport', () => {
-  const src = readFileSync(new URL('../src/chapters/r0.ts', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../src/chapters/story.ts', import.meta.url), 'utf8');
   const block = src.slice(src.indexOf('export const CHAPTERS'), src.indexOf('];', src.indexOf('export const CHAPTERS')));
   const total = [...block.matchAll(/scroll:\s*([\d.]+)/g)].reduce((a, m) => a + Number(m[1]), 0);
   assert.ok(total > 0);

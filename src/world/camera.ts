@@ -3,14 +3,17 @@
 // the sheet (sampled on its posed surface) or the text block, with a margin. Portrait is the
 // design case: the sheet may overflow a phone's sides a little once it opens, the text never.
 //
+// Close shots carry an authored distance instead (Shot.absDist, blended in by absW), so a
+// low pass along the roll is the same move on every screen and a wide screen simply sees more.
+//
 // The distance is precomputed along the whole playhead per aspect (a table at 1/120 chapter
 // steps, lightly smoothed), so the camera is a pure function of (s, aspect) and never wobbles
 // with per-frame sampling.
 
 import { PerspectiveCamera, Vector3 } from 'three/webgpu';
-import { evalDeform } from './field/deform';
-import { cpuPose } from './field/cpuPose';
-import type { FrameState } from '../chapters/r0';
+import { evalDeform } from './field/deform.ts';
+import { cpuPose } from './field/cpuPose.ts';
+import type { FrameState } from '../chapters/story.ts';
 
 const STEPS = 120; // samples per chapter
 const MARGIN = 0.08; // per side, landscape
@@ -23,15 +26,24 @@ const TEXT_V = [0.145, 0.32, 0.5, 0.68, 0.87];
 export class Camera {
   readonly camera = new PerspectiveCamera(30, 9 / 16, 0.05, 8);
   private table: Float32Array | null = null;
+  /** distance from the camera to the look point this frame — the dust's focus plane */
+  focus = 1;
   private tableAspect = 0;
 
-  constructor(private readonly chapters: number, private readonly sample: (s: number) => FrameState) {}
+  private readonly chapters: number;
+  private readonly sample: (s: number) => FrameState;
+
+  constructor(chapters: number, sample: (s: number) => FrameState) {
+    this.chapters = chapters;
+    this.sample = sample;
+  }
 
   /** Place the camera for playhead s at the current aspect. */
   apply(s: number): FrameState {
     const st = this.sample(s);
     if (this.tableAspect !== this.camera.aspect) this.build();
     const d = this.distanceAt(s);
+    this.focus = d;
     this.camera.position.copy(st.shot.look).addScaledVector(st.shot.dir, d);
     this.camera.lookAt(st.shot.look);
     this.camera.fov = (2 * Math.atan(12 / st.shot.focal) * 180) / Math.PI;
@@ -51,7 +63,7 @@ export class Camera {
     const aspect = this.camera.aspect;
     const n = this.chapters * STEPS + 1;
     const raw = new Float32Array(n);
-    for (let i = 0; i < n; i++) raw[i] = fitDistance(this.sample(i / STEPS), aspect);
+    for (let i = 0; i < n; i++) raw[i] = shotDistance(this.sample(i / STEPS), aspect);
     // light smoothing (5-tap binomial, twice) floored at the raw fit so the margin is never eaten
     let cur = Float32Array.from(raw);
     for (let pass = 0; pass < 2; pass++) {
@@ -125,4 +137,16 @@ export function fitDistance(st: FrameState, aspect: number): number {
   const k = fitTextK(shot.fitText, portrait);
   const d = k <= 0 ? dSheet : k >= 1 ? dText : dSheet + (dText - dSheet) * k;
   return d * shot.distMul;
+}
+
+/** The shot's distance: the fitted one, or an authored one for close shots (blended by absW). */
+export function shotDistance(st: FrameState, aspect: number): number {
+  const { absW } = st.shot;
+  // authored distances are set on a 16:10 screen; a narrower screen sees less width at the same
+  // distance, so it stands back by √(1.6 / aspect) (a phone ≈ 1.65×) — the same move, framed to fit
+  const absDist = st.shot.absDist * Math.min(1.8, Math.max(1, Math.sqrt(1.6 / aspect)));
+  if (absW >= 1) return absDist;
+  const fitted = fitDistance(st, aspect);
+  // blend in log space: a pull-back reads as a steady change of scale, not a rush at its middle
+  return absW <= 0 ? fitted : Math.exp(Math.log(fitted) + (Math.log(absDist) - Math.log(fitted)) * absW);
 }

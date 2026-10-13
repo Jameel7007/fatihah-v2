@@ -45,13 +45,14 @@ import {
   vertexIndex,
   vogelDiskSample,
 } from 'three/tsl';
-import { Field } from './field/field';
-import { Residual } from './field/residual';
-import { buildSilhouette, GRID_H, GRID_W, type SilhouetteData } from './field/silhouette';
-import { THICKNESS, evalDeform } from './field/deform';
-import { buildEnvironment, buildFiberTexture, buildUtilTexture } from './textures';
-import { buildSky, type Sky } from './sky';
-import type { Profile } from '../core/profile';
+import { Field } from './field/field.ts';
+import { Residual } from './field/residual.ts';
+import { buildSilhouette, GRID_H, GRID_W, type SilhouetteData } from './field/silhouette.ts';
+import { THICKNESS, evalDeform } from './field/deform.ts';
+import { buildEnvironment, buildFiberTexture, buildUtilTexture } from './textures.ts';
+import { buildSky, type Sky } from './sky.ts';
+import type { Profile } from '../core/profile.ts';
+import { Dust, DUST_MAX } from './dust.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type N = any;
@@ -70,6 +71,9 @@ export interface World {
   fill: DirectionalLight;
   rim: SpotLight;
   field: Field;
+  dust: Dust;
+  /** the light rig 0..1 (key, fill, rim, environment) times the candle's breath */
+  setLight(light: number, breath: number): void;
   /** pose the parchment: v1 deform p (0 rolled … 0.38 unrolled … 0.6 flat), tilt (rad) */
   pose(renderer: WebGPURenderer, deformP: number, tiltRad: number, dt: number, vLpf: number): void;
 }
@@ -142,6 +146,11 @@ export function buildWorld(renderer: WebGPURenderer, profile: Profile, scene: Sc
   rim.target.position.set(0, 0, 0);
   scene.add(rim, rim.target);
 
+  const KEY_ANGLE = (26 * Math.PI) / 180;
+  const dust = new Dust(DUST_MAX * profile.particles, key.position, key.target.position, KEY_ANGLE, 0.5);
+  scene.add(dust.sprite);
+  const base = { key: key.intensity, fill: fill.intensity, rim: rim.intensity, env: scene.environmentIntensity };
+
   let lastP = NaN;
   let lastTilt = NaN;
   return {
@@ -152,6 +161,13 @@ export function buildWorld(renderer: WebGPURenderer, profile: Profile, scene: Sc
     fill,
     rim,
     field,
+    dust,
+    setLight(light, breath) {
+      key.intensity = base.key * light * breath;
+      fill.intensity = base.fill * light;
+      rim.intensity = base.rim * light;
+      scene.environmentIntensity = base.env * light;
+    },
     pose(r, deformP, tiltRad, dt, vLpf) {
       // a still sheet needs no field passes (phones: no inertia layer, so rest frames are free)
       if (!residual && deformP === lastP && tiltRad === lastTilt) return;
@@ -216,6 +232,7 @@ function parchmentMaterial(maps: Maps, pos: N, normalObj: N, tangentObj: N, suv:
   const Bv: N = Nv.cross(Tv);
   const k = 0.00055;
   m.normalNode = Nv.add(Tv.mul(fn.x.mul(k))).add(Bv.mul(fn.y.mul(k))).normalize();
+  if (new URLSearchParams(location.search).get('dbg') === 'normal') { m.colorNode = Nv.mul(0.5).add(0.5); m.normalNode = Nv; m.sheen = 0; } // QA: ?dbg=normal shows the shading normal
 
   const keyPos: N = uniform(vec3(...KEY_POS));
   const nW: N = modelWorldMatrix.mul(vec4(normalObj, 0)).xyz.normalize().mul(fd);
@@ -246,8 +263,11 @@ function buildSheet(field: Field, maps: Maps): Mesh {
   const ti: N = vi.sub(tj.mul(GRID_W));
   const texel: N = ivec2(ti, tj);
   const pos: N = textureLoad(field.posRT.texture, texel).xyz;
-  const nrm: N = textureLoad(field.nrmRT.texture, texel).xyz;
-  const tan: N = textureLoad(field.tanRT.texture, texel).xyz;
+  // explicit varyings: fetched per vertex, INTERPOLATED across each triangle. Left implicit, the
+  // fragment stage received them unblended — flat bands, one per grid row, visible on the roll
+  // the moment a camera came close (R1).
+  const nrm: N = varying(textureLoad(field.nrmRT.texture, texel).xyz);
+  const tan: N = varying(textureLoad(field.tanRT.texture, texel).xyz);
   const suv: N = varying(vec2(ti.toFloat().div(GRID_W - 1), tj.toFloat().div(GRID_H - 1)));
   const mesh = new Mesh(geo, parchmentMaterial(maps, pos, nrm, tan, suv));
   mesh.name = 'parchment';
@@ -284,12 +304,13 @@ function buildRibbon(field: Field, sil: SilhouetteData): Mesh {
   geo.boundingSphere = new Sphere(new Vector3(0, 0, 0), 1.2);
   const texel: N = ivec2((attribute('texelX', 'float') as N).toInt(), (attribute('texelY', 'float') as N).toInt());
   const pos: N = textureLoad(field.posRT.texture, texel).xyz;
-  const nrm: N = textureLoad(field.nrmRT.texture, texel).xyz;
+  const nrmV: N = textureLoad(field.nrmRT.texture, texel).xyz;
+  const nrm: N = varying(nrmV);
   const m = new MeshStandardNodeMaterial();
   m.side = DoubleSide;
   m.color.set('#B08F5C');
   m.roughness = 0.8;
-  m.positionNode = pos.add(nrm.mul(-THICKNESS).mul(attribute('side', 'float')));
+  m.positionNode = pos.add(nrmV.mul(-THICKNESS).mul(attribute('side', 'float')));
   m.normalNode = transformNormalToView(nrm).mul(faceDirection);
   const mesh = new Mesh(geo, m);
   mesh.name = 'edge';

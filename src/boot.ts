@@ -1,7 +1,7 @@
 // Entry: the intro is already on screen (index.html). Load the engine; if WebGPU and WebGL2 both
 // fail, say so plainly (the designed fallback arrives in R6).
 try {
-  await import('./main');
+  await import('./main.ts');
 } catch (error) {
   console.error('[fatihah v2] startup failed', error);
   const intro = document.getElementById('intro');

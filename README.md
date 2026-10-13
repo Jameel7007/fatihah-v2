@@ -5,9 +5,9 @@ verse, with a reed pen — and then raised into gold. This is the second version
 [the Al-Fātiḥah manuscript](https://jameel7007.github.io/fatihah-manuscript/), rebuilt for more motion
 and to feel smooth on a phone. Live (work in progress): <https://jameel7007.github.io/fatihah-v2/>
 
-**Status:** milestone R0 of R6 — the foundations: the dark world and the parchment on a phone, the way
-scrolling drives the piece, and the checks that keep it smooth. The writing, the travelling camera,
-the verse-by-verse transitions and the light arrive in R1–R4. Progress: [`docs/status.html`](docs/status.html).
+**Status:** milestone R1 of R6. The foundations (R0) and the opening (R1) are in: a parchment in the
+dark, a warm light with gold dust in its beam, a slow push-in, and a camera that travels with the roll as
+it opens. The writing, the verse-by-verse transitions and the rise into gold arrive in R2–R4. Progress: [`docs/status.html`](docs/status.html).
 
 ## How it works, in plain words
 

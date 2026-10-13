@@ -2,7 +2,7 @@
 // with the TSL math; the probe harness compares GPU readbacks against this to ±0.0015 and
 // GPU FD normals against the analytic normal to ≤2°.
 
-import { SPIRAL_GAP, type DeformState } from './deform';
+import { SPIRAL_GAP, type DeformState } from './deform.ts';
 
 const SHEET_W = 0.78;
 const K = SPIRAL_GAP / (2 * Math.PI);

@@ -21,14 +21,17 @@ jameel7007.github.io/fatihah-manuscript) stays untouched until v2 replaces it at
 - `src/core/assetGate.ts`: each chapter lists its assets (`CHAPTER_ASSETS`); download → build → pre-compile
   (against `grade.passTarget`, never the canvas) before the playhead may enter.
 - `src/core/profile.ts`: phone / laptop / desktop, chosen once at boot, never changed mid-session.
+- Chapters live in `src/chapters/story.ts`; neighbours must agree at their boundary and the camera path must
+  not jump (qa/chapters.test.ts). Close shots use `Shot.absDist` (authored at 16:10, scaled for narrow screens).
 - The scroll track height in index.html must equal Σ chapter scroll + 1 (qa/track.test.ts).
 
 ## How to run
 - `npm run dev` (4530) · `npm run build` · `npm run preview` (4531) · `npm test`
 - Phone harness: `npm run build && node qa/phone-session.mjs [--desktop] [--webgl2] [--record]`
   (headless Brave at 390×660@3, cold load, real scroll gestures; checks jumps, skips, SYNC compiles, the gate).
+- Review frames: `node qa/frames.mjs --at 0.2,1,1.5 [--only phone] [--q dbg=normal]` (pinned playhead, PNG per screen).
 - URL switches: `?hud=1` fps readout · `?trace=1` per-frame record in `window.__trace` · `?profile=phone|laptop|desktop`
-  · `?at=S` pin the playhead · `?gateDelay=MS` hold the ink download back · `?backend=webgl2`.
+  · `?at=S` pin the playhead · `?dbg=normal|dust` shading normals / every mote unlit · `?gateDelay=MS` hold the ink download back · `?backend=webgl2`.
 - Phone over the LAN: `FATIHAH_LAN=1 npm run preview -- --host` (HTTPS with v1's cert in `~/.fatihah-tls`).
 - Deploy: push to main → `.github/workflows/pages.yml` → jameel7007.github.io/fatihah-v2 (base via `FATIHAH_BASE`;
   runtime URLs through `assetUrl()`).

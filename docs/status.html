@@ -50,19 +50,27 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 </style>
 
 <div class="wrap">
-<p class="eyebrow">Status ledger · updated 12 October 2026</p>
+<p class="eyebrow">Status ledger · updated 13 October 2026</p>
 <h1>Al-Fātiḥah v2<span class="ar" lang="ar">ٱلْفَاتِحَة</span></h1>
 <p class="lede">Live at <a href="https://jameel7007.github.io/fatihah-v2/">jameel7007.github.io/fatihah-v2</a> (source: <a href="https://github.com/Jameel7007/fatihah-v2">github.com/Jameel7007/fatihah-v2</a>). The rebuild of the manuscript with more motion: a pen you can see, a camera that travels, a pause between the āyāt, and particles and light. Built phone first. Version 1 stays live until this one replaces it.</p>
 
 <div class="rail" aria-label="Milestones">
-  <div class="now"><b>R0</b>Foundations · awaiting your phone check</div>
-  <div><b>R1</b>The opening</div>
+  <div><b>R0</b>Foundations · done, 60 fps on your phone</div>
+  <div class="now"><b>R1</b>The opening · awaiting your phone check</div>
   <div><b>R2</b>The writing</div>
   <div><b>R3</b>Between the āyāt</div>
   <div><b>R4</b>The rise</div>
   <div><b>R5</b>The ending</div>
   <div><b>R6</b>Polish and launch</div>
 </div>
+
+<h2>R1: the opening</h2>
+<p>The first chapter now plays by itself once the page has loaded. The stars come up out of the dark. A warm light comes up on the rolled parchment with a small flicker, like a candle catching, and then keeps breathing gently. Gold dust drifts in its beam. Meanwhile the camera pushes in slowly from far away to a low view of the roll's end, where its turns show.</p>
+<p>Then scrolling unrolls the page. The camera travels with the roll as the paper pays out, then rises to look down on the opened sheet. The page chapter after it is still the R0 placeholder until R2 brings the writing.</p>
+<figure>
+  <img src="r1-strip.jpg" alt="Six phone frames: the roll small in the dark, lit; the push-in; the close view of the roll's end; the unroll; the camera rising; the opened sheet">
+  <figcaption>Phone frames at fixed moments: the light coming up, the push-in, the roll's end, the unroll, the rise, the opened sheet. Gold motes drift in the beam (they are easier to see in the recordings).</figcaption>
+</figure>
 
 <h2>R0: what is built</h2>
 <p>The dark world (v1's universe sky) and the parchment (v1's surface and material) on a phone, driven by the new engine. Three placeholder chapters exercise the rules: the opening rises out of the dark, scrolling unrolls the page, and the page settles flat. R1 to R4 replace them with designed shots.</p>
@@ -82,7 +90,7 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 <tr><td>The text never changes</td><td>v1's text, ink and gold pipeline is carried over unchanged. Rebuilt here, it produces every file byte for byte, and every build checks the seven āyāt letter for letter.</td></tr>
 </tbody></table></div>
 
-<h2>Measured in R0</h2>
+<h2>Measured (R1 build)</h2>
 <p>Headless Brave on this Mac, cold load of the production build, real scroll gestures. The GPU is the Mac's, so these numbers show that nothing stutters or jumps by design. They do not show phone speed. Your phone is the real test.</p>
 <div class="tbl"><table>
 <thead><tr><th>Check</th><th>Phone 390×660 (WebGPU)</th><th>Desktop 1440×900</th><th>Phone (WebGL2)</th></tr></thead>
@@ -93,28 +101,32 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 <tr><td>Shaders compiled on a visible frame</td><td class="n ok">0</td><td class="n ok">0</td><td class="n ok">0</td></tr>
 <tr><td>Ink held back 15 s: page waits, note shows, continues smoothly</td><td class="ok">yes</td><td class="ok">yes</td><td class="ok">yes</td></tr>
 <tr><td>Intro gone after</td><td class="n">0.3 s</td><td class="n">0.3 s</td><td class="n">0.4–1.5 s</td></tr>
+<tr><td>Chapter boundaries agree; no camera jumps (unit test, phone and desktop shapes)</td><td class="ok" colspan="3">yes, 11 of 11 checks pass</td></tr>
 </tbody></table></div>
 <p>Frames that stalled while the harness itself was taking a screenshot are listed separately in the report. They are not counted above.</p>
 
 <h2>Not yet measured</h2>
 <ul>
-<li class="wait">Frame rate on a real phone (iPhone Safari). This is your R0 check.</li>
+<li class="wait">The R1 opening on your phone: frame rate with the dust, and how the pace feels.</li>
 <li>Load time on a mobile connection.</li>
 <li>Reduced motion and the fallback for browsers without WebGPU or WebGL2. Both are in R6.</li>
 </ul>
 
 <div class="steps">
-<p class="eyebrow">Your R0 check on the phone</p>
+<p class="eyebrow">Your R1 check on the phone</p>
 <ol>
 <li>Open <a href="https://jameel7007.github.io/fatihah-v2/?hud=1">jameel7007.github.io/fatihah-v2/?hud=1</a> on your phone. The frame rate shows at the top left.</li>
-<li>Watch the opening rise out of the dark, then scroll slowly through the unroll.</li>
-<li>Flick hard to the bottom, then back to the top. It should glide, never jump.</li>
-<li>Tell me the fps you saw, and anything that felt stuck, jumpy or slow to load.</li>
+<li>Let the opening play without touching the screen (about 7 seconds), watching for the dust in the light.</li>
+<li>Scroll slowly through the unroll, then flick hard to the bottom and back to the top.</li>
+<li>Tell me the fps you saw, and how the pace of the push-in and the unroll feels: too slow, too fast, or right.</li>
 </ol>
 </div>
 
 <h2>Decisions</h2>
 <ul class="log">
+<li><time>2026-10-13</time>The dust moves along fixed drifting paths worked out directly on the graphics card. Nothing has to be simulated from frame to frame, so the compute pass the plan suggested isn't needed, and it runs the same on WebGPU and WebGL2. The motes live in the light's cone, so almost every one is in the beam. Phones get 35% of the desktop count.</li>
+<li><time>2026-10-13</time>Close shots are authored on a 16:10 screen. A narrower screen stands back by the square root of the width difference (about 1.65× on a phone), so the same move still fits.</li>
+<li><time>2026-10-13</time>Fixed the parchment's shading normals, which were flat per grid row (visible as bands up close). v1 has the same flaw but only shows the page from further away; v1 is left untouched.</li>
 <li><time>2026-10-12</time>Profiles: phone at up to 1.75 device pixels per point, 1024 shadow map with a simple soft filter, no page inertia, particles at 35%. Laptop and desktop get v1's softer shadows.</li>
 <li><time>2026-10-12</time>Pace limits: a flick plays up to 2.5× the authored speed, and going back plays at 1.6×.</li>
 <li><time>2026-10-12</time>On a phone the reading view fills the screen with the text block. A wide screen keeps more of the page around it.</li>
@@ -123,6 +135,8 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 <h2>Ledger</h2>
 <ul class="log">
+<li><time>2026-10-13</time>R1 built: the timed opening (stars, candle light, gold dust, push-in), the tracking unroll and rise, a scroll cue after the opening, a chapter-continuity test and a review-frames script (qa/frames.mjs). Scripted sessions on phone, desktop and WebGL2: 60 fps, no jumps, no skips, nothing compiled on a visible frame. Waiting for your phone check before R2.</li>
+<li><time>2026-10-13</time>You checked R0 on your phone: smooth, 60 fps. R0 closed.</li>
 <li><time>2026-10-13</time>Public repo created and deployed to GitHub Pages. The scripted phone session against the live site: first cold load 3.2 s to the opening, 60 fps, no jumps, no skips, the gate test passes.</li>
 <li><time>2026-10-12</time>R0 built: new project, v1 pipeline carried over and verified, profile, timeline, asset gate, the world and parchment, intro, waiting note, trace, HUD and the scripted phone session. Waiting for your phone check before R1.</li>
 </ul>

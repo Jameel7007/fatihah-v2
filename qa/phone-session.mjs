@@ -13,59 +13,24 @@
 // here show hitches and structure, not phone speed — the owner's phone is the real test.
 //
 // Usage: npm run build && node qa/phone-session.mjs [--base URL] [--out DIR] [--record] [--desktop] [--webgl2]
-import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BROWSER, launch, previewBase, sleep } from './headless.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
-const browser = opt('--browser', process.env.FATIHAH_BROWSER ?? '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser');
+const browser = opt('--browser', BROWSER);
 const desktop = args.includes('--desktop');
 const record = args.includes('--record');
 const webgl2 = args.includes('--webgl2');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const out = opt('--out', join(root, 'qa/output', `${desktop ? 'desktop' : 'phone'}${webgl2 ? '-webgl2' : ''}-${stamp}`));
 mkdirSync(out, { recursive: true });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const children = [];
-process.on('exit', () => children.forEach((c) => { try { c.kill(); } catch { /* gone */ } }));
 
-// a fresh production preview unless --base is given (cold load, no HMR)
-let base = opt('--base');
-if (!base) {
-  const port = 4600 + Math.floor(Math.random() * 300);
-  children.push(spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { cwd: root, stdio: 'ignore' }));
-  base = `http://localhost:${port}`;
-  for (let i = 0; i < 60; i++) { try { await fetch(base); break; } catch { await sleep(250); } }
-}
-
-const dbg = 9700 + Math.floor(Math.random() * 200);
-const userData = join(root, 'build', `.headless-phone-${dbg}`);
-children.push(spawn(browser, ['--headless=new', '--no-first-run', '--enable-unsafe-webgpu', '--enable-features=WebGPU', '--use-angle=metal', '--ignore-gpu-blocklist', '--window-size=1200,900', `--user-data-dir=${userData}`, `--remote-debugging-port=${dbg}`, 'about:blank'], { stdio: 'ignore' }));
-for (let i = 0; i < 60; i++) { try { await (await fetch(`http://localhost:${dbg}/json/version`)).json(); break; } catch { await sleep(500); } }
-
-async function connect() {
-  const tabs = await (await fetch(`http://localhost:${dbg}/json`)).json();
-  const tab = tabs.find((t) => t.type === 'page');
-  const ws = new WebSocket(tab.webSocketDebuggerUrl);
-  await new Promise((r) => ws.addEventListener('open', r, { once: true }));
-  let id = 0;
-  const pending = new Map();
-  const listeners = new Map();
-  ws.addEventListener('message', (ev) => {
-    const m = JSON.parse(ev.data);
-    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
-    else if (m.method && listeners.has(m.method)) listeners.get(m.method)(m.params);
-  });
-  const send = (method, params = {}) => new Promise((res, rej) => {
-    const i = ++id;
-    pending.set(i, (m) => (m.error ? rej(new Error(`${method}: ${m.error.message}`)) : res(m.result)));
-    ws.send(JSON.stringify({ id: i, method, params }));
-  });
-  return { send, on: (m, f) => listeners.set(m, f), close: () => ws.close() };
-}
+const base = await previewBase(root, opt('--base'));
+const connect = await launch(root, browser);
 
 const W = desktop ? 1440 : 390;
 const H = desktop ? 900 : 660;
@@ -164,15 +129,18 @@ function analyse(run) {
   };
 }
 
-const unrollVh = 2.6;
+// the chapters' scroll lengths and the opening's duration (chapters/story.ts)
+const openingVh = 0.8;
+const unrollVh = 3.0;
+const openingMs = 7000;
 const results = {};
 
 // 1 · a reader at a steady pace, with review frames at fixed moments
 const steady = await session('steady', '', async ({ shot, scroll, evalJs }) => {
-  await sleep(500); await shot('00-opening-start');
-  await sleep(4200); await shot('01-opening-end');
+  await sleep(1500); await shot('00-opening-early');
+  await sleep(openingMs - 1000); await shot('01-opening-end');
   const vh = await evalJs('innerHeight');
-  await scroll(vh * 0.75, 700); await sleep(600);
+  await scroll(vh * openingVh * 0.95, 700); await sleep(600);
   for (let i = 1; i <= 4; i++) {
     await scroll(vh * unrollVh / 4, 500);
     await sleep(900);
@@ -185,7 +153,7 @@ results.steady = analyse(steady);
 
 // 2 · flicks: to the end and back to the top, hard — the playhead must not skip or jump
 const flick = await session('flick', '', async ({ shot, scroll }) => {
-  await sleep(4500);
+  await sleep(openingMs + 300);
   await scroll(6000, 6000); await sleep(400); await shot('mid-flick');
   await sleep(6000); await shot('after-flick-down');
   await scroll(-6000, 6000); await sleep(9000); await shot('after-flick-up');
@@ -193,8 +161,8 @@ const flick = await session('flick', '', async ({ shot, scroll }) => {
 results.flick = analyse(flick);
 
 // 3 · the gate: the ink pack held back 15 s while the reader rushes ahead
-const gated = await session('gate', '&gateDelay=15000', async ({ shot, scroll }) => {
-  await sleep(4500);
+const gated = await session('gate', '&gateDelay=20000', async ({ shot, scroll }) => {
+  await sleep(openingMs + 300);
   await scroll(6000, 6000); await sleep(7000); await shot('waiting');
   await sleep(10000); await shot('released');
 });

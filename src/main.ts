@@ -7,22 +7,24 @@
 // chapter whose assets are not ready), and the picture is drawn as a pure function of the playhead.
 
 import { REVISION, Scene } from 'three/webgpu';
-import { chooseProfile } from './core/profile';
-import { createRenderer } from './core/renderer';
-import { Timeline } from './core/timeline';
-import { AssetGate, type AssetDef } from './core/assetGate';
-import { assetUrl } from './core/url';
-import { CHAPTERS, CHAPTER_ASSETS, sample } from './chapters/r0';
-import { Camera } from './world/camera';
-import { createGrade } from './world/grade';
-import { buildWorld, type World } from './world/parchment';
-import { Hud, Trace } from './qa/trace';
+import { chooseProfile } from './core/profile.ts';
+import { createRenderer } from './core/renderer.ts';
+import { Timeline } from './core/timeline.ts';
+import { AssetGate, type AssetDef } from './core/assetGate.ts';
+import { assetUrl } from './core/url.ts';
+import { CHAPTERS, CHAPTER_ASSETS, sample } from './chapters/story.ts';
+import { Camera } from './world/camera.ts';
+import { createGrade } from './world/grade.ts';
+import { buildWorld, type World } from './world/parchment.ts';
+import { Hud, Trace } from './qa/trace.ts';
 
 const q = new URLSearchParams(location.search);
 const canvas = document.getElementById('gl') as HTMLCanvasElement;
 const intro = document.getElementById('intro') as HTMLElement;
 const introLine = document.getElementById('intro-line') as HTMLElement;
 const waitNote = document.getElementById('wait') as HTMLElement;
+const cue = document.getElementById('cue') as HTMLElement;
+let cueDone = false;
 const trace = new Trace(q);
 const hud = new Hud(q);
 const t0 = performance.now();
@@ -162,12 +164,23 @@ renderer.setAnimationLoop((now: number) => {
   const deformV = dt > 0 ? (st.deformP - lastDeform) / dt : 0;
   lastDeform = st.deformP;
   world.pose(renderer, st.deformP, st.tilt, dt, deformV);
+  // the candle breathes: two slow, incommensurate swells (live only; pinned QA frames hold still)
+  const tSec = now / 1000;
+  const breath = pinned !== null ? 1 : 1 + 0.018 * Math.sin(tSec * 1.46) + 0.009 * Math.sin(tSec * 3.7 + 1.3);
+  world.setLight(st.light, breath);
+  world.dust.update(pinned !== null ? 0 : tSec, st.dust, cam.focus);
   world.sky.uPxRad.value = ((cam.camera.fov * Math.PI) / 180) / Math.max(1, canvas.height);
   grade.setExposure(pinned !== null ? Math.max(st.exposure, 1e-3) : introDone ? st.exposure : 0);
   grade.setGrainSeed(pinned !== null ? 0 : Math.floor(now / 125));
   grade.render();
 
   if (!introDone && ++presented >= 3) liftIntro();
+
+  // the scroll cue: once the opening has played, until the reader's first scroll
+  if (!cueDone && scrollY > 24) {
+    cueDone = true;
+    cue.classList.remove('is-on');
+  } else if (!cueDone && timeline.s >= 0.97 && !cue.classList.contains('is-on')) cue.classList.add('is-on');
 
   // "still arriving": the reader is ahead of a chapter whose assets are not ready yet
   const held = opened && request > timeline.limit + 1e-3 && timeline.s >= timeline.limit - 1e-3;

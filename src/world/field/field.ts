@@ -47,8 +47,8 @@ import {
   vec4,
 } from 'three/tsl';
 import type { Texture } from 'three/webgpu';
-import { GRID_H, GRID_W, type SilhouetteData } from './silhouette';
-import { SPIRAL_GAP, type DeformState } from './deform';
+import { GRID_H, GRID_W, type SilhouetteData } from './silhouette.ts';
+import { SPIRAL_GAP, type DeformState } from './deform.ts';
 
 const SHEET_W = 0.78;
 

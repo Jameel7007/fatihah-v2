@@ -18,8 +18,8 @@
     --arabic: "Amiri Quran", "Amiri", "Geeza Pro", serif; }
   html, body { margin: 0; background: #000; color: var(--muted); }
   /* the scroll track: the chapters' scroll lengths + one screen (qa/spacer.test.ts keeps this equal to chapters/r0.ts) */
-  #track { width: 1px; height: 570vh; }
-  @supports (height: 100lvh) { @media (pointer: coarse) { #track { height: 570lvh; } } }
+  #track { width: 1px; height: 620vh; }
+  @supports (height: 100lvh) { @media (pointer: coarse) { #track { height: 620lvh; } } }
   canvas#gl { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; display: block; opacity: 0; transition: opacity .9s ease-out; }
   @media (pointer: coarse) { canvas#gl { height: 100svh; } }
 
@@ -37,6 +37,15 @@
     margin: 0; font: 11px/1.4 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--muted);
     opacity: 0; transition: opacity .5s ease; pointer-events: none; white-space: nowrap; }
   #wait.is-on { opacity: .85; }
+  #cue { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;
+    font: 10.5px/1 var(--mono); letter-spacing: .26em; text-transform: uppercase; color: var(--muted);
+    opacity: 0; transition: opacity 1.2s ease; }
+  #cue.is-on { opacity: .9; }
+  #cue .line { width: 1px; height: 34px; background: linear-gradient(var(--gold), transparent); transform-origin: top;
+    animation: cue 2.4s ease-in-out infinite; }
+  @keyframes cue { 0%, 100% { transform: scaleY(.35); opacity: .5; } 50% { transform: scaleY(1); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { #cue .line { animation: none; } }
   #hud { position: fixed; left: 10px; top: calc(10px + env(safe-area-inset-top)); z-index: 6; max-width: calc(100vw - 20px);
     font: 10.5px/1.5 ui-monospace, Menlo, monospace; color: #C9A45B; background: rgba(0,0,0,.45); padding: 3px 6px; pointer-events: none; }
   @media (prefers-reduced-motion: reduce) { #intro, canvas#gl, #wait { transition: none; } }
@@ -51,6 +60,7 @@
     <p class="en">Al-Fātiḥah · The Opening</p>
     <div class="rail" aria-hidden="true"><div id="intro-line"></div></div>
   </div>
+  <div id="cue" aria-hidden="true"><span>Scroll</span><span class="line"></span></div>
   <p id="wait" role="status">The page is being prepared</p>
   <div id="hud" hidden></div>
 </main>

@@ -31,6 +31,9 @@ jameel7007.github.io/fatihah-manuscript) stays untouched until v2 replaces it at
   lengths, bundled). Rerun it after changing schedule constants (qa/ink.test.ts fails if stale). `src/ink/pen.ts`
   is the qalam's track; `src/ink/inkPass.ts` draws the ink into a page target + a sharp detail window around the
   camera's look point (both sampled by the parchment).
+- R3 transitions: schedule.ts TAIL/PRE/LIGHT_*/WORDS_AT/BREATH_UP; `src/ink/sweep.ts` (light pass, CPU) +
+  parchment emissive pool (ink A channel = cov × āyah / 8 — the ink pass must stay transparent + NoBlending or
+  three writes alpha 1); story.ts ayahShot (breath) and wordsAt (translation card, `src/page/words.ts`).
 - Assets after chapter 0 build/compile only at a quiet moment (`gate.quiet`: playhead at rest 250 ms, or the
   reader waiting for that asset). compileAsync stamps `renderer.depth` onto the context: for depth-less targets set
   `renderer.depth = false` around it, or the real render builds a second pipeline synchronously.
@@ -40,11 +43,16 @@ jameel7007.github.io/fatihah-manuscript) stays untouched until v2 replaces it at
 - Phone harness: `npm run build && node qa/phone-session.mjs [--desktop] [--webgl2] [--record]`
   (headless Brave at 390×660@3, cold load, real scroll gestures; checks jumps, skips, SYNC compiles, the gate,
   and GPU lag — rAF keeps a 60 Hz cadence even when the GPU falls behind, so frame intervals alone prove little).
+  Harness hygiene (2026-10-13 CPU incident): browser profiles live in the OS temp folder and are deleted
+  after each run; the preview server is spawned as `node node_modules/vite/bin/vite.js` (an `npx` wrapper
+  orphaned it when killed). Never write harness output under a watched folder: vite.config.ts
+  `server.watch.ignored` covers qa/output, build/.headless-*, docs/review — 87 stale profiles in build/ had kept
+  the dev server at ~300 % CPU.
   Headless Brave's Page.captureScreenshot can deadlock the page at 2880×1800 during the writing: desktop captures go
   through the screencast (`capture()` in qa/headless.mjs, CSS-pixel size); phone-size screenshots are safe.
 - Review frames: `node qa/frames.mjs --at 0.2,1,1.5 [--only phone] [--q dbg=normal]` (pinned playhead, PNG per screen).
 - URL switches: `?hud=1` fps readout · `?trace=1` per-frame record in `window.__trace` · `?profile=phone|laptop|desktop`
-  · `?at=S` pin the playhead · `?dbg=normal|dust` shading normals / every mote unlit · `?gateDelay=MS` hold the ink download back · `?backend=webgl2`.
+  · `?at=S` pin the playhead · `?dbg=normal|dust|tag` shading normals / every mote unlit / the ink's āyah tag · `?nosweep` no light pass · `?gateDelay=MS` hold the ink download back · `?backend=webgl2`.
 - Phone over the LAN: `FATIHAH_LAN=1 npm run preview -- --host` (HTTPS with v1's cert in `~/.fatihah-tls`).
 - Deploy: push to main → `.github/workflows/pages.yml` → jameel7007.github.io/fatihah-v2 (base via `FATIHAH_BASE`;
   runtime URLs through `assetUrl()`).

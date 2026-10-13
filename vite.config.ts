@@ -15,6 +15,13 @@ export default defineConfig({
   // one three instance across three / three/webgpu / three/tsl (v1 gotcha)
   resolve: { dedupe: ['three'] },
   optimizeDeps: { exclude: ['three'] },
-  server: { ...lanServer },
+  server: {
+    ...lanServer,
+    // Vite watches the whole project root by default. The QA harness writes tens of thousands of
+    // files inside it (screenshots, recordings, traces in qa/output; headless-browser profiles) and
+    // docs/review holds review media — none of it is source. Watching it kept the dev server at
+    // ~300 % CPU even when idle (2026-10-13). Source folders are still watched; hot reload is unchanged.
+    watch: { ignored: ['**/qa/output/**', '**/build/.headless-*/**', '**/docs/review/**'] },
+  },
   preview: { ...lanServer },
 });

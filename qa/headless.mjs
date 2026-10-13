@@ -2,17 +2,31 @@
 // no HMR) and a headless Chromium (Brave by default) with WebGPU over Metal, driven through the
 // DevTools protocol.
 import { spawn } from 'node:child_process';
+import { mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const children = [];
-process.on('exit', () => children.forEach((c) => { try { c.kill(); } catch { /* gone */ } }));
+const tempDirs = [];
+// stop what this script started — the preview server and the browser — and remove the browser's
+// throwaway profile, however the script ends (2026-10-13: runs stopped mid-way left orphaned
+// preview servers and 87 profiles inside the project, which the dev server then watched)
+const cleanup = () => {
+  // SIGKILL: a browser asked to quit politely writes its profile on the way out, after the
+  // folder below has been removed (seen 2026-10-13); the profile is throwaway, nothing to save
+  children.forEach((c) => { try { c.kill('SIGKILL'); } catch { /* gone */ } });
+  tempDirs.forEach((d) => { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } });
+};
+process.on('exit', cleanup);
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(sig, () => { cleanup(); process.exit(130); });
 
 /** Serve dist/ on a free port unless a base URL is given. */
 export async function previewBase(root, base) {
   if (base) return base;
   const port = 4600 + Math.floor(Math.random() * 300);
-  children.push(spawn('npx', ['vite', 'preview', '--port', String(port), '--strictPort'], { cwd: root, stdio: 'ignore' }));
+  // the vite binary itself (not `npx vite`): killing an npx wrapper left the server running
+  children.push(spawn(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), 'preview', '--port', String(port), '--strictPort'], { cwd: root, stdio: 'ignore' }));
   const url = `http://localhost:${port}`;
   for (let i = 0; i < 60; i++) { try { await fetch(url); break; } catch { await sleep(250); } }
   return url;
@@ -21,7 +35,15 @@ export async function previewBase(root, base) {
 /** Launch the headless browser; returns connect() for its first page. */
 export async function launch(root, browser) {
   const dbg = 9700 + Math.floor(Math.random() * 200);
-  const userData = join(root, 'build', `.headless-${dbg}`);
+  // a throwaway profile outside the project, removed when the script ends. Brave's helper processes
+  // can write a few files after that, so earlier runs' leftovers (> 10 min old) are swept here too.
+  for (const d of readdirSync(tmpdir())) {
+    if (!d.startsWith('fatihah-headless-')) continue;
+    const full = join(tmpdir(), d);
+    try { if (Date.now() - statSync(full).mtimeMs > 10 * 60 * 1000) rmSync(full, { recursive: true, force: true }); } catch { /* in use or gone */ }
+  }
+  const userData = mkdtempSync(join(tmpdir(), 'fatihah-headless-'));
+  tempDirs.push(userData);
   children.push(spawn(browser, ['--headless=new', '--no-first-run', '--enable-unsafe-webgpu', '--enable-features=WebGPU', '--use-angle=metal', '--ignore-gpu-blocklist', '--window-size=3000,2100', `--user-data-dir=${userData}`, `--remote-debugging-port=${dbg}`, 'about:blank'], { stdio: 'ignore' }));
   for (let i = 0; i < 60; i++) { try { await (await fetch(`http://localhost:${dbg}/json/version`)).json(); break; } catch { await sleep(500); } }
   return async function connect() {

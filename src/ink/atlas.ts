@@ -8,6 +8,8 @@ import { ClampToEdgeWrapping, DataTexture, LinearFilter, NearestFilter, NoColorS
 import { assetUrl } from '../core/url.ts';
 import { PenTrack } from './pen.ts';
 import type { TimedInstance } from './schedule.ts';
+import { LightPass } from './sweep.ts';
+import timing from './timing.json' with { type: 'json' };
 
 export interface InkPack {
   mtsdf: Texture;
@@ -22,6 +24,8 @@ export interface InkPack {
   tMin: number;
   tMax: number;
   pen: PenTrack;
+  /** R3: the light that passes along each āyah once it is written */
+  light: LightPass;
 }
 
 interface Downloaded {
@@ -72,7 +76,7 @@ export function buildInk(d: Downloaded): InkPack {
     buf[at + 1] = q & 255;
   };
   // instance texture, 8 RGBA8 texels per row (v1 layout; rings dropped):
-  //  T0 [su0, sv0] T1 [su1, sv1] T2 [au0, av0] T3 [au1, av1] T4 [start, dur] T5 [aaSlope/4096, kind, 0]
+  //  T0 [su0, sv0] T1 [su1, sv1] T2 [au0, av0] T3 [au1, av1] T4 [start, dur] T5 [aaSlope/4096, kind, āyah]
   const INST_TEXELS = 8;
   const list = d.instances.instances;
   const count = list.length;
@@ -104,6 +108,7 @@ export function buildInk(d: Downloaded): InkPack {
     const aaSlope = cellPxW / Math.max(1e-6, su1 - su0) / (2 * d.instances.rangePx);
     put16(inst, rowAt(i, 5), Math.min(1, aaSlope / 4096));
     inst[rowAt(i, 5) + 2] = g.kind === 'marker' ? KIND_MARKER : KIND_GLYPH;
+    inst[rowAt(i, 5) + 3] = g.ayah; // R3: the light pass finds an āyah's ink by this
   });
   const instTex = new DataTexture(inst, INST_TEXELS, count, RGBAFormat, UnsignedByteType);
   instTex.minFilter = NearestFilter;
@@ -149,5 +154,6 @@ export function buildInk(d: Downloaded): InkPack {
     tMin: d.pens.tMin,
     tMax: d.pens.tMax,
     pen: new PenTrack(timed, paths),
+    light: new LightPass(timing.spans as unknown as ConstructorParameters<typeof LightPass>[0], list),
   };
 }

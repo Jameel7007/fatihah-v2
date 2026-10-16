@@ -11,7 +11,7 @@
 //
 // No three.js imports: unit-tested directly by node.
 
-import { LEAD, type TimedInstance } from './schedule.ts';
+import { LEAD, TAIL, type TimedInstance } from './schedule.ts';
 
 export interface PenSample {
   x: number;
@@ -34,7 +34,7 @@ interface Stroke {
 const LIFT_STROKE = 0.0025;
 const LIFT_WORD = 0.007;
 const LIFT_LINE = 0.016;
-const LIFT_REST = 0.022;
+const LIFT_REST = 0.06; // R3: at rest the pen stands clear of the words (and steps aside, below)
 const REST_GAP = 1.0; // gaps longer than this are rests: hover, then travel at the end
 const TRAVEL = 0.8;
 const ENTRY_LIFT = 0.09; // the pen comes down from here at the start of āyah 1
@@ -93,9 +93,16 @@ export class PenTrack {
     const end = s.path[s.path.length - 1]!;
     const n = S[lo + 1];
     if (!n) {
-      // after the last letter: lift away up and to the right
-      const k = smooth(clamp01((t - s.end) / 2.5));
-      return { x: end[0] + 0.12 * k, y: end[1] - 0.05 * k, lift: LIFT_REST + 0.12 * k, writing: 0 };
+      // after the last letter: rest aside like every āyah's breath, then (once the page is
+      // finished, in the chapter after) lift away up and to the right
+      const rise = smooth(clamp01((t - s.end) / 0.6));
+      const away = smooth(clamp01((t - s.end - TAIL) / 2.5));
+      return {
+        x: end[0] - 0.035 * rise + 0.15 * away,
+        y: end[1] + 0.05 * rise - 0.08 * away,
+        lift: LIFT_REST * rise + 0.14 * away,
+        writing: 0,
+      };
     }
     const next = n.path[0]!;
     const gap = n.start - s.end;
@@ -104,8 +111,10 @@ export class PenTrack {
       // a rest: rise over the last letter, wait, then travel in the last TRAVEL seconds
       const into = t - s.end;
       const travelK = smooth(clamp01((into - (gap - TRAVEL)) / TRAVEL));
-      const rise = smooth(clamp01(into / 0.4));
-      return { x: end[0] + (next[0] - end[0]) * travelK, y: end[1] + (next[1] - end[1]) * travelK, lift: LIFT_REST * rise * (1 - travelK), writing: 0 };
+      const rise = smooth(clamp01(into / 0.6));
+      // aside: a little down the page and to the left, off the line just written
+      const aside = rise * (1 - travelK);
+      return { x: end[0] + (next[0] - end[0]) * travelK - 0.035 * aside, y: end[1] + (next[1] - end[1]) * travelK + 0.05 * aside, lift: LIFT_REST * aside, writing: 0 };
     }
     const k = gap > 1e-6 ? clamp01((t - s.end) / gap) : 1;
     const e = smooth(k);

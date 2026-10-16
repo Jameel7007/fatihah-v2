@@ -28,15 +28,23 @@ export const TRAVEL_V = 0.6; // the pen crosses between strokes at 60 cm/s (a qu
 export const TRAVEL_MIN = 0.02; // … plus a beat to lift and set down
 export const LINE_TRAVEL = 1.1; // a line break: the pen lifts and returns to the right margin
 export const LEAD = 4.0; // āyah 1: the camera comes down from the reading view to the nib before the first letter
-export const PRE = 0.45; // the pen settles before each later āyah
+export const PRE = 2.2; // R3: the camera settles from its breath onto the next line, the pen travels there
 export const BLOOM_DELAY = 0.25; // after the last letter, before the rosette opens
 export const BLOOM = 1.3; // the rosette blooms petal by petal
-export const TAIL = BLOOM_DELAY + BLOOM + 0.6; // … and a breath of stillness
+// R3 — the breath after each āyah (seconds after its last letter):
+export const LIGHT_AT = 0.5; // a soft light passes along the words just written …
+export const LIGHT_DUR = 1.8; // … right to left, line by line
+export const WORDS_AT = 1.2; // the translation appears on its own beat
+export const BREATH_UP = [0.6, 2.8] as const; // the camera lifts to show the page so far
+export const TAIL = 3.2; // the chapter ends here: lifted, lit, translated, still
 export const WET_S = 2.4; // how long a stroke stays wet after the pen passes (v1: Δp 0.045)
 export const WRITTEN_S = 5.5; // the placeholder chapter after āyah 7 (the camera rises over the page)
 
 export interface AyahSpan {
   ayah: number;
+  /** the composition lines it is written on, and its extent on the page (sheet x, y) */
+  lines: [number, number];
+  box: [number, number, number, number];
   /** ink clock at the chapter's start and end */
   t0: number;
   t1: number;
@@ -65,7 +73,7 @@ export interface Timing {
   tMax: number;
 }
 
-interface V1Instance { order: number; ayah: number; line: number; word: number; kind: string; start: number; dur: number }
+interface V1Instance { order: number; ayah: number; line: number; word: number; kind: string; start: number; dur: number; sheet?: [number, number, number, number] }
 
 /** v1 timing (p) + pen paths → the ink clock. Within an āyah v1's rhythm is kept (gaps × K)
  *  except where the next stroke begins away from where the last one ended: there the pen gets
@@ -96,7 +104,16 @@ export function buildTiming(v1: V1Instance[], paths: Map<number, Array<[number, 
     }
     const d = cursor;
     const pre = a === 1 ? LEAD : PRE;
-    const span: AyahSpan = { ayah: a, t0: w0 - pre, t1: w0 + d + TAIL, w0, w1: w0 + d, bloom0: w0 + d + BLOOM_DELAY };
+    const mine = v1.filter((x) => x.ayah === a);
+    const lines: [number, number] = [Math.min(...mine.map((x) => x.line)), Math.max(...mine.map((x) => x.line))];
+    const rects: Array<[number, number, number, number]> = mine.map((x) => x.sheet ?? [0, 0, 0, 0]);
+    const box: [number, number, number, number] = [
+      Math.min(...rects.map(([x0, , x1]) => Math.min(x0, x1))),
+      Math.min(...rects.map(([, y0]) => y0)),
+      Math.max(...rects.map(([x0, , x1]) => Math.max(x0, x1))),
+      Math.max(...rects.map(([, , , y1]) => y1)),
+    ];
+    const span: AyahSpan = { ayah: a, lines, box, t0: w0 - pre, t1: w0 + d + TAIL, w0, w1: w0 + d, bloom0: w0 + d + BLOOM_DELAY };
     spans.push(span);
     for (const g of v1.filter((x) => x.ayah === a && x.kind === 'marker')) {
       instances.push({ order: g.order, ayah: a, line: g.line, word: g.word, kind: g.kind, start: span.bloom0, dur: BLOOM });

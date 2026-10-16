@@ -50,15 +50,15 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 </style>
 
 <div class="wrap">
-<p class="eyebrow">Status ledger · updated 13 October 2026 (R2.1)</p>
+<p class="eyebrow">Status ledger · updated 13 October 2026</p>
 <h1>Al-Fātiḥah v2<span class="ar" lang="ar">ٱلْفَاتِحَة</span></h1>
 <p class="lede">Live at <a href="https://jameel7007.github.io/fatihah-v2/">jameel7007.github.io/fatihah-v2</a> (source: <a href="https://github.com/Jameel7007/fatihah-v2">github.com/Jameel7007/fatihah-v2</a>). The rebuild of the manuscript with more motion: a pen you can see, a camera that travels, a pause between the āyāt, and particles and light. Built phone first. Version 1 stays live until this one replaces it.</p>
 
 <div class="rail" aria-label="Milestones">
   <div><b>R0</b>Foundations · done, 60 fps on your phone</div>
   <div><b>R1</b>The opening · done, 60 fps on your phone</div>
-  <div class="now"><b>R2</b>The writing · catch-up fixed, awaiting your phone check</div>
-  <div><b>R3</b>Between the āyāt</div>
+  <div><b>R2</b>The writing · done, smooth on your phone</div>
+  <div class="now"><b>R3</b>Between the āyāt · awaiting your phone check</div>
   <div><b>R4</b>The rise</div>
   <div><b>R5</b>The ending</div>
   <div><b>R6</b>Polish and launch</div>
@@ -83,6 +83,22 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 <tr><td>6</td><td class="n">5.0 s</td><td class="n">7.6 s</td></tr>
 <tr><td>7</td><td class="n">10.8 s</td><td class="n">13.4 s (ten words over three lines)</td></tr>
 </tbody></table></div>
+
+<h2>R3: between the āyāt</h2>
+<p>Each āyah now ends with its own short ritual, so the seven read as a recitation, verse by verse:</p>
+<ol>
+<li>The pen finishes, lifts clear of the words and steps aside.</li>
+<li>The rosette blooms.</li>
+<li>A warm pool of light passes along the words just written, right to left, line by line. The ink stays dark and the page brightens around it.</li>
+<li>The translation appears on its own beat, in a card at the foot of the screen.</li>
+<li>The camera breathes out: it lifts to frame the text written so far, leaving room for the card. This is where the piece rests until you scroll on.</li>
+<li>When you scroll, the camera settles onto the next line, the translation gives way, and the pen begins the next āyah.</li>
+</ol>
+<p>The pause after each āyah lasts 3.2 s, and the settle into the next 2.2 s. If you stop scrolling, the piece rests on the lifted view with the translation showing.</p>
+<figure>
+  <img src="r3-strip.jpg" alt="Phone frames at the end of āyah 1: the last letter, the rosette and the light, the translation card arriving, the lifted view, and the end of āyah 7 with the page written so far">
+  <figcaption>Phone frames: the last letter of āyah 1, the light passing, the translation card arriving with the camera lifted, settling onto āyah 2, and the breath after āyah 7 with the page written so far.</figcaption>
+</figure>
 
 <h2>R2.1: the picture keeps up with your scroll</h2>
 <p>Your R2 check: "I scroll down and the image takes too long to catch up." The cause was the timeline rule, not the frame rate. Scrolling asks for a chapter; the picture played everything in between at no more than 2.5× its normal pace. With a minute of writing added in R2, a quick scroll down left the picture far behind. A loading screen would not have helped, because nothing was still loading.</p>
@@ -140,23 +156,25 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 <h2>Not yet measured</h2>
 <ul>
-<li class="wait">The writing on your phone: frame rate while the ink is drawn, and how the pace of the pen feels.</li>
+<li class="wait">The transitions on your phone: frame rate, how long each pause between āyāt feels, and whether the translation card is easy to read.</li>
 <li>Load time on a mobile connection.</li>
 <li>Reduced motion and the fallback for browsers without WebGPU or WebGL2. Both are in R6.</li>
 </ul>
 
 <div class="steps">
-<p class="eyebrow">Your R2 check on the phone</p>
+<p class="eyebrow">Your R3 check on the phone</p>
 <ol>
 <li>Open <a href="https://jameel7007.github.io/fatihah-v2/?hud=1">jameel7007.github.io/fatihah-v2/?hud=1</a> on your phone. The frame rate shows at the top left.</li>
-<li>Scroll past the unroll until the camera comes down to the pen, then let āyah 1 be written without touching the screen.</li>
-<li>Scroll a little to go on to the next āyah, one at a time, as far as you like. Then flick hard to the bottom and back to the top.</li>
-<li>Tell me the fps you saw, and how the writing feels: the pen's pace, how close the camera is, and whether the letters look sharp.</li>
+<li>Scroll until the pen writes āyah 1, then stop and let the light pass and the translation appear.</li>
+<li>Go on one āyah at a time with a small scroll each time, as far as you like.</li>
+<li>Tell me the fps you saw, whether the pause between āyāt feels too short, too long or right, and whether the translation is easy to read on your phone.</li>
 </ol>
 </div>
 
 <h2>Decisions</h2>
 <ul class="log">
+<li><time>2026-10-13</time>The light pass lights the paper, not the ink. Adding light to dark ink only made the words look grey and faded. Light on matte ink leaves it dark, so the words stand out against the brightened page.</li>
+<li><time>2026-10-13</time>Translation card: at the foot of the screen on every device, on a dark translucent ground so it reads over the bright page. The text is Yusuf Ali's, with his capitals and punctuation, as in v1.</li>
 <li><time>2026-10-13</time>Catch-up (after your R2 check). The reader's own chapter plays at 1×. Chapters scrolled past fast-forward at up to 16×, braking at a constant rate so the picture arrives in your chapter at 1×. Speed is set from how many authored seconds lie between the picture and your thumb. This replaces the old 2.5× limit and the 1.6× rewind.</li>
 <li><time>2026-10-13</time>Pace: v1's rhythm for letters, word gaps and diacritics is kept (at 70 seconds per unit of v1's scroll). Wherever the next stroke begins away from where the last one ended, the pen gets time to travel, at 60 cm/s. A line break gets at least 1.1 s. Āyāt 1–6 write in 2.8–5.4 s; āyah 7, ten words, in 10.8 s.</li>
 <li><time>2026-10-13</time>The camera's look point follows the pen through a time filter: about one second of the pen's path, weighted slightly ahead. It eases back by up to 1.5× at each line break.</li>
@@ -172,6 +190,8 @@ a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 <h2>Ledger</h2>
 <ul class="log">
+<li><time>2026-10-13</time>R3 built: after each āyah, the pen lifts aside, the rosette blooms, the light passes, the translation appears and the camera breathes out, then settles on the next line. Fixed along the way: three.js wrote alpha = 1 for opaque materials, which erased the ink layer's āyah tag (the ink pass now writes all four channels); the pen hovered over the last word, and over line 5 after āyah 7. Tests: the light passes each āyah once over its own words; each translation is fully shown when its āyah comes to rest. Waiting for your phone check before R4.</li>
+<li><time>2026-10-13</time>You checked R2.1 on your phone: smooth now. R2 closed.</li>
 <li><time>2026-10-13</time>R2.1: you found the picture lagging far behind your scroll on the phone. Diagnosed as the playback-rate rule, not performance. Fixed with fast-forward through chapters you pass and 1× in yours. A flick from top to end now catches up in 5.5 s instead of over 30 s. New harness measure: catch-up time.</li>
 <li><time>2026-10-13</time>R2 built: the qalam and its track (from the stroke-order field), the ink clock with travel time, seven āyah chapters, the follow camera with line-break pull-backs, living ink (wet bead, drying sheen, pause blooms), rosettes that bloom, the sharp detail window, and the pen's descent and lift-away. Fixed along the way: pre-compiles that silently didn't take (a depth setting), assets preparing mid-scroll (now at quiet moments), and a harness blind spot (GPU lag now measured). Waiting for your phone check before R3.</li>
 <li><time>2026-10-13</time>You checked R1 on your phone: smooth, 60 fps. R1 closed.</li>

@@ -19,7 +19,7 @@ import type { ChapterSpec } from '../core/timeline.ts';
 import { E1, E2, EUnroll, span } from '../core/easing.ts';
 import { evalDeform } from '../world/field/deform.ts';
 import { cpuPose } from '../world/field/cpuPose.ts';
-import { WRITTEN_S } from '../ink/schedule.ts';
+import { BREATH_UP, PRE, WORDS_AT, WRITTEN_S } from '../ink/schedule.ts';
 import type { PenTrack } from '../ink/pen.ts';
 import timing from '../ink/timing.json' with { type: 'json' };
 
@@ -57,6 +57,8 @@ export interface Shot {
   /** an authored distance (world units) for close shots, blended in by absW */
   absDist: number;
   absW: number;
+  /** R3: fit only this band of the text block (sheet v range) — the page written so far */
+  fitRange?: [number, number];
 }
 
 export interface FrameState {
@@ -76,6 +78,8 @@ export interface FrameState {
   inkT: number;
   /** the qalam is in the picture */
   pen: boolean;
+  /** R3: the translation card — which āyah, and how present (0..1) */
+  words: { ayah: number; opacity: number };
   shot: Shot;
 }
 
@@ -133,6 +137,7 @@ function blendShot(a: Shot, b: Shot, k: number): Shot {
     // an authored distance only exists where a shot has one: blend the weight, keep the value
     absDist: a.absW > 0 && b.absW > 0 ? lerp(a.absDist, b.absDist, k) : a.absW > 0 ? a.absDist : b.absDist,
     absW: lerp(a.absW, b.absW, k),
+    fitRange: b.fitRange && (k > 0 || !a.fitRange) ? b.fitRange : a.fitRange,
   };
 }
 
@@ -178,13 +183,14 @@ export function sample(s: number): FrameState {
         dust: light,
         inkT: timing.tMin,
         pen: false,
+        words: NO_WORDS,
         shot: blendShot(far, openingEnd(), k),
       };
     }
     case 'unroll': {
       const deformP = 0.06 + 0.32 * EUnroll(t);
       const tilt = lerp(TILT0, TILT_OPEN, E2(t));
-      return { chapter, t, deformP, tilt, exposure: 1, light: 1, dust: 1, inkT: timing.tMin, pen: false, shot: unrollShot(t, deformP, tilt) };
+      return { chapter, t, deformP, tilt, exposure: 1, light: 1, dust: 1, inkT: timing.tMin, pen: false, words: NO_WORDS, shot: unrollShot(t, deformP, tilt) };
     }
     case 'page': {
       // the sheet settles flat and the camera rises over it to read
@@ -198,6 +204,7 @@ export function sample(s: number): FrameState {
         dust: 1,
         inkT: timing.tMin,
         pen: false,
+        words: NO_WORDS,
         shot: blendShot(shot(D_OPEN, OPEN_LOOK, 46), readShot(), k),
       };
     }
@@ -213,17 +220,18 @@ export function sample(s: number): FrameState {
         dust: 1,
         inkT: t7 + t * WRITTEN_S,
         pen: t < 0.85,
-        shot: blendShot(followShot(t7), readShot(), smooth(t)),
+        words: wordsAt(t7 + t * WRITTEN_S),
+        shot: blendShot(ayahShot(t7), readShot(), smooth(t)),
       };
     }
     default: {
       // an āyah: the ink clock runs through the chapter at the authored pace
       const sp = SPANS[chapter - FIRST_AYAH]!;
       const inkT = sp.t0 + t * (sp.t1 - sp.t0);
-      let sh = followShot(inkT);
+      let sh = ayahShot(inkT);
       // āyah 1 opens on the reading view; the camera comes down to the nib before the first letter
       if (chapter === FIRST_AYAH) sh = blendShot(readShot(), sh, smooth(span(inkT, sp.t0, sp.w0 - 0.2)));
-      return { chapter, t, deformP: 0.38, tilt: 0, exposure: 1, light: 1, dust: 1, inkT, pen: true, shot: sh };
+      return { chapter, t, deformP: 0.38, tilt: 0, exposure: 1, light: 1, dust: 1, inkT, pen: true, words: wordsAt(inkT), shot: sh };
     }
   }
 }
@@ -245,9 +253,57 @@ export function onSheet(x: number, y: number): Vector3 {
 }
 
 function followShot(inkT: number): Shot {
-  if (!pen) return shot(D_FOLLOW, onSheet(0.15, 0.2), 45, { absDist: FOLLOW_DIST, absW: 1 });
+  if (!pen) return shot(D_FOLLOW, onSheet(0.15, 0.2), 45, { absDist: FOLLOW_DIST, absW: 1, fitText: 1 });
   const [lx, ly] = pen.look(inkT);
-  return shot(D_FOLLOW, onSheet(lx, ly), 45, { absDist: FOLLOW_DIST * (1 + 0.5 * pen.lineBreak(inkT)), absW: 1 });
+  return shot(D_FOLLOW, onSheet(lx, ly), 45, { absDist: FOLLOW_DIST * (1 + 0.5 * pen.lineBreak(inkT)), absW: 1, fitText: 1 });
+}
+
+// R3 — the breath between āyāt: after the rosette has bloomed the camera lifts, a little more
+// from above, to frame the text written so far (at most the last ~0.42 of the page, and with
+// room beneath it for the translation card); it settles onto the next line as that āyah begins.
+const D_BREATH = D_FOLLOW.clone().lerp(D_READ, 0.45).normalize();
+const NO_WORDS = { ayah: 0, opacity: 0 };
+
+function breathShot(sp: (typeof SPANS)[number]): Shot {
+  const bottom = sp.box[3]!;
+  const top = Math.max(0.145, bottom - 0.42);
+  const range: [number, number] = [top, bottom + 0.1];
+  return shot(D_BREATH, onSheet(0, (range[0] + range[1]) / 2), 50, { fitText: 1, fitRange: range });
+}
+
+/** How far into its breath the camera is after āyah i (0..1), at ink-clock T. */
+function breathAt(i: number, T: number): number {
+  const sp = SPANS[i]!;
+  const up = smooth(span(T, sp.w1 + BREATH_UP[0], sp.w1 + BREATH_UP[1]));
+  const next = SPANS[i + 1];
+  const down = next ? smooth(span(T, next.w0 - PRE, next.w0 - 0.1)) : 0;
+  return up * (1 - down);
+}
+
+/** The writing chapters' camera: following the nib, breathing out between āyāt. */
+function ayahShot(T: number): Shot {
+  let sh = followShot(T);
+  for (let i = 0; i < SPANS.length; i++) {
+    const b = breathAt(i, T);
+    if (b > 0) sh = blendShot(sh, breathShot(SPANS[i]!), b);
+  }
+  return sh;
+}
+
+/** The translation of each āyah appears on its own beat after the light has passed, and gives way
+ *  as the next āyah's first letter is written (the last one, as the camera rises over the page). */
+function wordsAt(T: number): { ayah: number; opacity: number } {
+  for (let i = 0; i < SPANS.length; i++) {
+    const sp = SPANS[i]!;
+    const fadeIn = smooth(span(T, sp.w1 + WORDS_AT, sp.w1 + WORDS_AT + 0.8));
+    if (fadeIn <= 0) continue;
+    const next = SPANS[i + 1];
+    const end = sp.t1; // āyah 7: the written chapter follows
+    const out = next ? smooth(span(T, next.w0 - 0.4, next.w0 + 0.6)) : smooth(span(T, end + 0.55 * WRITTEN_S, end + 0.85 * WRITTEN_S));
+    const o = fadeIn * (1 - out);
+    if (o > 0) return { ayah: sp.ayah, opacity: o };
+  }
+  return NO_WORDS;
 }
 
 export { FIRST_AYAH, WRITTEN };

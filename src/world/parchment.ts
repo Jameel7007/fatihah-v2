@@ -18,6 +18,7 @@ import {
   Sphere,
   SpotLight,
   Vector3,
+  Vector4,
   type Texture,
   type WebGPURenderer,
 } from 'three/webgpu';
@@ -78,6 +79,8 @@ export interface World {
   ink: InkTargets;
   /** the fibre map (the ink pass reads its grain for the bleed) */
   fiber: Texture;
+  /** R3 light pass: a band of warm light at sheet x over the line [yLo, yHi], on āyah `ayah`'s ink */
+  setSweep(x: number, yLo: number, yHi: number, ayah: number, amp: number): void;
   /** the light rig 0..1 (key, fill, rim, environment) times the candle's breath */
   setLight(light: number, breath: number): void;
   /** pose the parchment: v1 deform p (0 rolled … 0.38 unrolled … 0.6 flat), tilt (rad) */
@@ -125,7 +128,8 @@ export function buildWorld(renderer: WebGPURenderer, profile: Profile, scene: Sc
   const field = new Field(sil);
   const residual = profile.residual ? new Residual() : null;
   const ink = makeInkTargets(profile.inkHeight, profile.inkDetail);
-  const maps = { fiber: buildFiberTexture(renderer), util: buildUtilTexture(renderer), ink };
+  const sweep = { band: uniform(new Vector4(0, 0, 0, 0)), amp: uniform(0) };
+  const maps = { fiber: buildFiberTexture(renderer), util: buildUtilTexture(renderer), ink, sweep };
 
   const sheetRoot = new Group();
   scene.add(sheetRoot);
@@ -171,6 +175,10 @@ export function buildWorld(renderer: WebGPURenderer, profile: Profile, scene: Sc
     dust,
     ink,
     fiber: maps.fiber,
+    setSweep(x, yLo, yHi, ayah, amp) {
+      (sweep.band.value as Vector4).set(x, yLo, yHi, ayah);
+      sweep.amp.value = amp;
+    },
     setLight(light, breath) {
       key.intensity = base.key * light * breath;
       fill.intensity = base.fill * light;
@@ -202,6 +210,7 @@ interface Maps {
   fiber: Texture;
   util: Texture;
   ink: InkTargets;
+  sweep: { band: N; amp: N };
 }
 
 const INK_DRY = '#2A211B'; // v1 §14 iron-gall ink, dry …
@@ -283,7 +292,24 @@ function parchmentMaterial(maps: Maps, pos: N, normalObj: N, tangentObj: N, suv:
   const L: N = keyPos.sub(positionWorld).normalize();
   const backLit: N = nW.mul(-1).dot(L).add(0.4).div(1.4).clamp(0, 1);
   const thick: N = height.mul(0.6).add(util.x.mul(0.4));
-  m.emissiveNode = color('#B08D52').mul(backLit.mul(backLit)).mul(float(1).sub(thick).mul(0.18)).mul(2.2);
+  const translucency: N = color('#B08D52').mul(backLit.mul(backLit)).mul(float(1).sub(thick).mul(0.18)).mul(2.2);
+  // R3 light pass: a soft warm band travels along the āyah just written — a pool of light on the
+  // paper beneath its words. The ink's A channel (premultiplied) tags each texel's āyah.
+  const band: N = maps.sweep.band;
+  const xw: N = suv.x.sub(0.5).mul(0.78);
+  const inLine: N = smoothstep(band.y.sub(0.015), band.y, suv.y).mul(float(1).sub(smoothstep(band.z, band.z.add(0.015), suv.y)));
+  const wide: N = xw.sub(band.x).div(0.07);
+  const narrow: N = xw.sub(band.x).div(0.03);
+  const amp: N = inLine.mul(maps.sweep.amp).mul(recto);
+  const tag: N = inkT.a.mul(8).div(inkT.r.max(1e-3));
+  const mine: N = float(1).sub(smoothstep(0.3, 0.5, tag.sub(band.w).abs()));
+  // a warm pool of light on the paper around the words — light on matte ink leaves it dark, so the
+  // words stand out against the brightened page (adding light to the ink itself only greyed it);
+  // the āyah's own ink keeps just a trace of warm sheen
+  const pool: N = wide.mul(wide).negate().exp().mul(float(1).sub(cov)).mul(0.26);
+  const sheen: N = narrow.mul(narrow).negate().exp().mul(cov).mul(mine).mul(0.03);
+  if (new URLSearchParams(location.search).get('dbg') === 'tag') { m.colorNode = vec3(tag.div(8), inkT.a, cov); } // QA: the ink's āyah tag
+  m.emissiveNode = translucency.add(color('#FFC78A').mul(pool).add(color('#E8A33A').mul(sheen)).mul(amp));
   m.positionNode = pos;
   return m;
 }

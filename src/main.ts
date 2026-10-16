@@ -15,6 +15,7 @@ import { CHAPTERS, CHAPTER_ASSETS, onSheet, sample, setPenTrack } from './chapte
 import { buildInk, downloadInk, type InkPack } from './ink/atlas.ts';
 import { InkPass } from './ink/inkPass.ts';
 import { Qalam } from './world/qalam.ts';
+import { Words } from './page/words.ts';
 import { Camera } from './world/camera.ts';
 import { createGrade } from './world/grade.ts';
 import { buildWorld, type World } from './world/parchment.ts';
@@ -27,6 +28,7 @@ const introLine = document.getElementById('intro-line') as HTMLElement;
 const waitNote = document.getElementById('wait') as HTMLElement;
 const cue = document.getElementById('cue') as HTMLElement;
 let cueDone = false;
+const words = new Words();
 const trace = new Trace(q);
 const hud = new Hud(q);
 const t0 = performance.now();
@@ -205,6 +207,8 @@ renderer.setAnimationLoop((now: number) => {
   // the nib where the pen track says it is
   if (inkPass && ink) {
     inkPass.run(renderer, st.inkT, st.shot.look.x / 0.78 + 0.5, st.shot.look.z + 0.5);
+    const sw = ink.light.at(st.inkT);
+    world.setSweep(sw.x, sw.yLo, sw.yHi, sw.ayah, q.has('nosweep') ? 0 : sw.amp); // ?nosweep: QA A/B
     if (st.pen) {
       const p = ink.pen.at(st.inkT);
       tip.copy(onSheet(p.x, p.y));
@@ -233,11 +237,13 @@ renderer.setAnimationLoop((now: number) => {
     w.forEach((f) => f());
   }
 
+  words.update(st.words.ayah, st.words.opacity);
+
   // the scroll cue: once the opening has played, until the reader's first scroll
   if (!cueDone && scrollY > 24) {
     cueDone = true;
     cue.classList.remove('is-on');
-  } else if (!cueDone && timeline.s >= 0.97 && !cue.classList.contains('is-on')) cue.classList.add('is-on');
+  } else if (!cueDone && pinned === null && timeline.s >= 0.97 && !cue.classList.contains('is-on')) cue.classList.add('is-on');
 
   // "still arriving": the reader is ahead of a chapter whose assets are not ready yet
   const held = opened && request > timeline.limit + 1e-3 && timeline.s >= timeline.limit - 1e-3;

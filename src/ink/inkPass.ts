@@ -14,9 +14,10 @@
 // the pen see crisp letters. The window's origin snaps to its own texel grid (no shimmer as it
 // travels); the parchment blends from page to window over the window's edge.
 //
-// Output: R = coverage, G = wetness, B = bead, A = 1.
+// Output: R = coverage, G = wetness, B = bead, A = coverage × āyah / 8 (R3: the light pass's tag;
+// stored premultiplied so filtering at stroke edges keeps A / R = the āyah).
 
-import { ClampToEdgeWrapping, LinearFilter, Mesh, Vector4, MeshBasicNodeMaterial, OrthographicCamera, PlaneGeometry, RGBAFormat, RenderTarget, Scene, UnsignedByteType, type Texture, type WebGPURenderer } from 'three/webgpu';
+import { ClampToEdgeWrapping, LinearFilter, Mesh, NoBlending, Vector4, MeshBasicNodeMaterial, OrthographicCamera, PlaneGeometry, RGBAFormat, RenderTarget, Scene, UnsignedByteType, type Texture, type WebGPURenderer } from 'three/webgpu';
 import { atan, clamp, exp, float, floor, fract, fwidth, ivec2, length, max, min, smoothstep, step, texture, textureLoad, uniform, uv, vec2, vec4 } from 'three/tsl';
 import type { InkPack } from './atlas.ts';
 import { KIND_MARKER } from './atlas.ts';
@@ -83,8 +84,12 @@ export class InkPass {
       const mat = new MeshBasicNodeMaterial();
       mat.toneMapped = false;
       mat.fog = false;
+      // write all four channels exactly: three forces alpha to 1 for opaque materials, which
+      // erased the āyah tag in A (R3) — 'transparent' with blending off writes it raw
+      mat.transparent = true;
+      mat.blending = NoBlending;
       const ink = this.inkNode(suv, fib(suv));
-      mat.colorNode = vec4(ink.cov, ink.wet, ink.bead, 1);
+      mat.colorNode = vec4(ink.cov, ink.wet, ink.bead, ink.cov.mul(ink.ayah).div(8));
       const scene = new Scene();
       const quad = new Mesh(new PlaneGeometry(2, 2), mat);
       quad.frustumCulled = false;
@@ -93,7 +98,7 @@ export class InkPass {
     }
   }
 
-  private inkNode(suv: N, fiberH: N): { cov: N; wet: N; bead: N } {
+  private inkNode(suv: N, fiberH: N): { cov: N; wet: N; bead: N; ayah: N } {
     const pack = this.pack;
     const span = pack.tMax - pack.tMin;
     const wetU = WET_S / span;
@@ -104,6 +109,7 @@ export class InkPass {
     let cov: N = float(0);
     let wet: N = float(0);
     let bead: N = float(0);
+    let ayah: N = float(0);
     for (let slot = 0; slot < pack.slots; slot++) {
       const gtx: N = textureLoad(pack.grid, ivec2(gx.mul(4).add(slot >> 1), gy));
       const pair: N = slot % 2 === 0 ? gtx.xy : gtx.zw;
@@ -160,11 +166,12 @@ export class InkPass {
       const drawing: N = step(0.0001, t01raw).mul(step(t01raw, 0.9999)).mul(float(1).sub(isMarker));
       const b: N = exp(w.sub(t01).div(0.035).pow(2).negate()).mul(c).mul(drawing);
 
+      ayah = c.greaterThan(cov).select(T5.w.mul(255), ayah);
       cov = max(cov, c);
       wet = max(wet, float(1).sub(dry).mul(c));
       bead = max(bead, b);
     }
-    return { cov, wet, bead };
+    return { cov, wet, bead, ayah };
   }
 
   /** Compile both pipelines against their own targets, then draw them once at ink-clock t. */

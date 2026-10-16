@@ -80,7 +80,7 @@ const out = {
   paths: paths.map((p) => ({ ...p, start: r5(times.get(p.order).start), dur: r5(times.get(p.order).dur) })),
 };
 writeFileSync(join(root, 'public/text/pen-paths.json'), JSON.stringify(out));
-const spans = timing.spans.map((s) => Object.fromEntries(Object.entries(s).map(([k, v]) => [k, k === 'ayah' ? v : r5(v)])));
+const spans = timing.spans.map((s) => Object.fromEntries(Object.entries(s).map(([k, v]) => [k, k === 'ayah' || k === 'lines' ? v : Array.isArray(v) ? v.map(r5) : r5(v)])));
 writeFileSync(join(root, 'src/ink/timing.json'), JSON.stringify({ tMin: r5(timing.tMin), tMax: r5(timing.tMax), spans }, null, 1) + '\n');
 console.log(`pen-paths.json  ${paths.length} instances · ${STEPS + 1} points each · ${empty} without inside texels`);
 for (const s of timing.spans) console.log(`  āyah ${s.ayah}: chapter ${(s.t1 - s.t0).toFixed(2)} s · writing ${(s.w1 - s.w0).toFixed(2)} s`);

@@ -87,7 +87,8 @@ export class Camera {
   }
 }
 
-/** Portrait is the design case: a phone reads the text block filling the screen. A landscape
+/** Portrait is the design case: a phone reads the text block filling the screen. A landscape (except
+ *  for shots that fit a band of the text — the breath — which fit it on every screen)
  *  screen has room for the page around it, so it only leans a third of the way toward the text. */
 const fitTextK = (k: number, portrait: boolean): number => (portrait ? k : k * 0.35);
 
@@ -128,18 +129,19 @@ export function fitDistance(st: FrameState, aspect: number): number {
     return dFit;
   };
   let dSheet = 0;
-  if (fitTextK(shot.fitText, portrait) < 1) {
+  if (fitTextK(shot.fitText, portrait || !!shot.fitRange) < 1) {
     const pts: Array<[number, number]> = [];
     for (const u of [-0.5, -0.25, 0, 0.25, 0.5]) for (let j = 0; j <= 32; j++) pts.push([u, j / 32]);
     dSheet = fitPoints(pts, Tx * (1 - m + allow), Ty * (1 - m));
   }
   let dText = 0;
-  if (fitTextK(shot.fitText, portrait) > 0) {
+  if (fitTextK(shot.fitText, portrait || !!shot.fitRange) > 0) {
     const pts: Array<[number, number]> = [];
-    for (const x of TEXT_X) for (const v of TEXT_V) pts.push([x / 0.78, v]);
+    const vs = shot.fitRange ? [shot.fitRange[0], (shot.fitRange[0] + shot.fitRange[1]) / 2, shot.fitRange[1]] : TEXT_V;
+    for (const x of TEXT_X) for (const v of vs) pts.push([x / 0.78, v]);
     dText = fitPoints(pts, Tx * (1 - m), Ty * (1 - m));
   }
-  const k = fitTextK(shot.fitText, portrait);
+  const k = fitTextK(shot.fitText, portrait || !!shot.fitRange);
   const d = k <= 0 ? dSheet : k >= 1 ? dText : dSheet + (dText - dSheet) * k;
   return d * shot.distMul;
 }

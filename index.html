@@ -46,6 +46,18 @@
     animation: cue 2.4s ease-in-out infinite; }
   @keyframes cue { 0%, 100% { transform: scaleY(.35); opacity: .5; } 50% { transform: scaleY(1); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { #cue .line { animation: none; } }
+  /* R3: the translation of each āyah, on its own beat — phone first: a grounded card at the foot */
+  #words { position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 4;
+    width: min(calc(100vw - 28px), 540px); box-sizing: border-box; display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px 16px 13px; border-radius: 6px; background: rgba(1, 3, 13, .74); border: 1px solid rgba(201, 164, 91, .18);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    opacity: 0; transform: translate(-50%, 8px); pointer-events: none; visibility: hidden; }
+  #words.is-on { visibility: visible; }
+  #words .n { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(201, 164, 91, .45);
+    display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; padding-bottom: 8px;
+    font: 400 15px/1 var(--arabic); color: var(--gold); margin-top: 1px; }
+  #words .t { margin: 0; font: 400 15.5px/1.5 var(--serif); color: var(--text); text-wrap: pretty; }
+  @media (min-width: 900px) and (min-height: 600px) { #words { bottom: calc(28px + env(safe-area-inset-bottom)); } #words .t { font-size: 17px; } }
   #hud { position: fixed; left: 10px; top: calc(10px + env(safe-area-inset-top)); z-index: 6; max-width: calc(100vw - 20px);
     font: 10.5px/1.5 ui-monospace, Menlo, monospace; color: #C9A45B; background: rgba(0,0,0,.45); padding: 3px 6px; pointer-events: none; }
   @media (prefers-reduced-motion: reduce) { #intro, canvas#gl, #wait { transition: none; } }
@@ -61,6 +73,7 @@
     <div class="rail" aria-hidden="true"><div id="intro-line"></div></div>
   </div>
   <div id="cue" aria-hidden="true"><span>Scroll</span><span class="line"></span></div>
+  <div id="words" aria-hidden="true" aria-live="polite"><span class="n" lang="ar"></span><p class="t"></p></div>
   <p id="wait" role="status">The page is being prepared</p>
   <div id="hud" hidden></div>
 </main>

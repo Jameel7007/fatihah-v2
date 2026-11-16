@@ -1,14 +1,16 @@
-# Al-Fātiḥah — v2 (in progress)
+# Al-Fātiḥah v2 (in progress)
 
-Sūrat al-Fātiḥah, the opening chapter of the Qurʾān, written on a parchment in the dark — verse by
-verse, with a reed pen — and then raised into gold. This is the second version of
-[the Al-Fātiḥah manuscript](https://jameel7007.github.io/fatihah-manuscript/), rebuilt for more motion
-and to feel smooth on a phone. Live (work in progress): <https://jameel7007.github.io/fatihah-v2/>
+Sūrat al-Fātiḥah, the opening chapter of the Qurʾān, written on a parchment in the dark, verse by
+verse, with a reed pen, and then raised into gold. This is the second version of the Al-Fātiḥah
+manuscript, rebuilt for more motion and to feel smooth on a phone.
 
-**Status:** milestone R2 of R6. The opening (R1) and the writing (R2) are in: a parchment in the dark, a
-warm light with gold dust in its beam, the page unrolling, and then a reed pen writing the seven āyāt one
-by one while the camera follows the nib. The pauses between the āyāt, the rise into gold and the ending
-arrive in R3–R5. Progress: [`docs/status.html`](docs/status.html).
+**[See it live (work in progress)](https://jameel7007.github.io/fatihah-v2/)**
+
+**Status:** milestone R3 of R6. The opening (R1), the writing (R2) and the pauses between the āyāt (R3)
+are in: a parchment in the dark, a warm light with gold dust in its beam, the page unrolling, a reed pen
+writing the seven āyāt one by one while the camera follows the nib, and after each āyah the pen lifts
+aside, a rosette blooms, a light passes and the translation appears. The rise into gold and the ending
+arrive in R4 and R5. Progress: [`docs/status.html`](docs/status.html).
 
 ## How it works, in plain words
 
